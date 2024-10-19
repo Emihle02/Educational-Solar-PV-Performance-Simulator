@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Solar Panel Web</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+        <link rel="stylesheet" type="text/css" href="src/main.css"/>
+    </head>
+
+    <body>
+        <h1>Solar Panel Simulator</h1>
+        <div class="dashboard">
+            <div class="card">
+                <h2>Location Settings</h2>
+                <input type="text" id="location" placeholder="Enter coordinates (lat, lng)" readonly />
+                <p>Optimum angle: <span id="optimumAngle">--</span>°</p>
+                <p>Peak Generated Power: <span id="peakPower">--</span> W</p>
+            </div>
+
+            <div class="card controls">
+                <h2>Controls</h2>
+                <label for="azimuth">Surface Azimuth Angle: <span id="azimuthValue">0</span>°</label>
+                <input type="range" id="azimuth" min="0" max="360" value="0" oninput="updateControls()" />
+                <label for="tilt">Tilt Angle: <span id="tiltValue">0</span>°</label>
+                <input type="range" id="tilt" min="0" max="90" value="0" oninput="updateControls()" />
+                <label for="soiling">Soiling Ratio: <span id="soilingValue">0</span></label>
+                <input type="range" id="soiling" min="0" max="1" step="0.01" value="0" oninput="updateControls()" />
+                <label for="zoom">Map Zoom: <span id="zoomValue">5</span></label>
+                <input type="range" id="zoom" min="1" max="10" value="5" oninput="updateControls()" />
+                <label for="soiling">Linear Shading: <span id="shadingValue">0</span></label>
+                <input type="range" id="shading" min="0" max="100" step="1" value="0" oninput="updateControls()" />
+            </div>
+
+            <div class="card output-power">
+                <h2>Daily Output Power</h2>
+                <canvas id="powerChart"></canvas>
+            </div>
+
+            <div class="card" id="pv-module">
+                <h2>Sun Path Diagram</h2>
+                <canvas id="sunPathDiagram" width="800" height="600"></canvas>
+            </div>
+
+            <div class="card">
+                <h2>1kW PV Module</h2>
+                <div id="solar-diagram">
+            </div>
+
+        </div>
+
+        <div class="card" id="map">
+            <h2>Map</h2>
+            <div id="map"></div>
+        </div>
+
+        <div class="card output-power">
+            <h2>Monthly Power Output</h2>
+            <canvas id="monthlyPowerChart"></canvas>
+        </div>
+
+        <div class="card financial-aspect">
+            <h2>Solar System Financial Calculator</h2>
+
+            <div class="input-group">
+                <label for="household-size">Household Size:</label>
+                <select id="household-size">
+                    <option value="small">Small (3 members)</option>
+                    <option value="medium">Medium (4-6 members)</option>
+                    <option value="large">Large (7 + members)</option>
+                </select>
+            </div>
+
+            <div class="output-group">
+                <p>Estimated Monthly Consumption: <span id="monthly-consumption">-- kWh</span></p>
+                <p>Recommended PV System Size: <span id="pv-size">-- kW</span></p>
+                <p>Number of Panels: <span id="panel-count">-- panels</span></p>
+                <p>Estimated Installation Cost: <span id="installation-cost">R--</span></p>
+            </div>
+
+            <div class="savings">
+                <h3>Bill Savings</h3>
+                <p>Original Bill: <span id="original-bill"></span></p>
+                <p>Reduced Bill (with Solar): <span id="reduced-bill"></span></p>
+            </div>
+
+        </div>
+
+        </div>
+
+        <!-- The js  -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+        <script src = "https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js" ></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        <script> console.log("Three.js version:", THREE.REVISION);</script>
+        <script src="src/main.js"></script>
+    </body>
+</html>

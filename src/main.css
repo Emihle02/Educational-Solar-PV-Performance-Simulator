@@ -1,0 +1,217 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #1a1a2e;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+h1 {
+    margin-bottom: 20px;
+}
+.dashboard {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+grid-template-rows: auto auto auto auto;
+gap: 20px;
+width: 100%;
+max-width: 1200px;
+}
+.card.financial-aspect {
+grid-column: span 3;
+padding: 20px;
+background-color: #f9f9f9;
+border-radius: 10px;
+box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+max-width: 600px;
+margin: auto;
+}
+
+h2 {
+text-align: center;
+color: #ffffff;
+}
+
+.input-group, .output-group, .savings {
+margin-bottom: 20px;
+}
+
+.input-group label, .input-group select {
+display: inline-block;
+margin-right: 10px;
+font-size: 16px;
+}
+
+.input-group select {
+padding: 5px;
+border-radius: 5px;
+border: 1px solid #f4f4f4;
+font-size: 16px;
+}
+
+.output-group p, .savings p {
+margin: 8px 0;
+font-size: 16px;
+color: #ffffff;
+}
+
+.savings h3 {
+margin-top: 20px;
+font-size: 18px;
+color: #ffffff;
+}
+
+span {
+font-weight: bold;
+}
+
+
+.card {
+background: linear-gradient(to bottom right, #13072e, #3f2182);
+border-radius: 10px;
+padding: 20px;
+box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+border: 1px solid #b3aaff;
+transition: all 0.3s ease;
+display: flex;
+flex-direction: column; /* Ensure vertical layout within the card */
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 12px rgba(255, 255, 255, 0.2);
+}
+.card h2 {
+margin: 0 0 10px 0; /* Margin at the bottom only */
+font-size: 1.5em; /* Adjust size if necessary */
+color: #ffffff;
+}
+.angle-label {
+position: absolute;
+font-size: 12px;
+color: #ffffff;
+}
+
+.controls input {
+    width: 100%;
+    margin: 10px 0;
+}
+.output-power canvas {
+    width: 100%;
+}
+.card.monthly-output {
+grid-column: span 1; /* Make it span all three columns */
+height: 400px; /* Set a fixed height or adjust as needed */
+}
+
+.monthly-output h2 {
+margin-bottom: 15px;
+}
+
+#monthlyPowerChart {
+width: 100%;
+height: calc(100% - 40px); /* Subtract the height of the h2 from the total height */
+}
+
+
+@media (max-width: 768px) {
+    .dashboard {
+    grid-template-columns: 1fr 1fr 1fr; /* Single column layout for small screens */
+    grid-template-rows: auto; /* Stack all cards vertically */
+
+    }
+
+    .output-power {
+    grid-column: span 1; /* Span across two columns */
+    grid-row: 3; /* Place in the third row */
+    height: 400px; /* Adjust the height */
+    position: relative; /* Ensure the child canvas is positioned correctly */
+    }
+
+    #map {
+    grid-column: span 1; /* Span one column */
+    grid-row: 1; /* Place in the third row */
+    height: 400px; /* Adjust the height */
+    }
+
+    #powerChart {
+    width: 100%;
+    height: 100%; /* Ensure the canvas takes up the full height of the card */
+    display: block; /* Remove extra spacing around the canvas */
+    }
+
+    .card.monthly-output {
+    grid-column: span 1;
+    height: 300px; /* Adjust height for mobile if needed */
+    }
+
+}
+
+.output-power {
+grid-column: span 2; /* Make this span across all columns */
+grid-row: 3; /* Place this in the third row */
+height: 400px; /* Adjust the height as needed */
+}
+
+#map {
+grid-column: span 1; /* Span one column */
+grid-row: 1; /* Place in the third row */
+height: 400px; /* Adjust the height */
+}
+
+.popup-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.popup-content button {
+    margin-top: 10px;
+    padding: 5px 10px;
+    border: none;
+    background-color: #4caf50;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.popup-content button:hover {
+    background-color: #45a049;
+}
+
+.card.output-power {
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+#solar-diagram {
+width: 300px;
+height: 300px;
+margin: 0 auto;
+background-color: #1a1a2e;
+}
+
+#pv-module {
+grid-column: span 2;
+height: 500px;
+background: linear-gradient(to bottom right, #13072e, #3f2182);
+border-radius: 10px;
+padding: 20px;
+box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+border: 1px solid #b3aaff;
+}
+
+#sunPathDiagram {
+grid-column: span 2; /* Span one column */
+grid-row: 2; /* Place in the third row */
+width: 100%;
+height: 400px;
+max-width: 800px;
+background-color: white;
+border-radius: 5px;
+}
