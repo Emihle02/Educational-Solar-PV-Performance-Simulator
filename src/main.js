@@ -449,7 +449,7 @@ function calculatheourlyPeakPower(solarData, tilt, azimuth, lat, lng) {
 
 function calculatePower(theta,GHI,DHI,DNI,tilt){
     const panelArea = 4; // Updated area for a 1kW solar panel in m^2
-    const panelEfficiency = 0.20; // Typical efficiency of a solar panel (20%)
+    const panelEfficiency = 0.16; // Typical efficiency of a solar panel (20%)
 
     // Calculate beam irradiance on tilted surface (Gb)
     const Gb = DNI * Math.cos(theta * Math.PI / 180);
@@ -710,6 +710,31 @@ function createSunPathDiagram(lat, lng) {
         ctx.fillText(text, width - 100, 20 + i * 20);
         });
 }
+//the user inputs coordinates
+
+function initializeLocationInput() {
+    const locationInput = document.getElementById('location');
+    const applyButton = document.getElementById('applyLocation');
+
+    applyButton.addEventListener('click', function() {
+        const coordinates = locationInput.value.split(',').map(coord => parseFloat(coord.trim()));
+        if (coordinates.length === 2 && !isNaN(coordinates[0]) && !isNaN(coordinates[1])) {
+            const [lat, lng] = coordinates;
+            updateLocation(lat, lng);
+            marker.setLatLng([lat, lng]);
+            map.setView([lat, lng], map.getZoom());
+        } else {
+            alert('Please enter valid coordinates in the format "latitude, longitude"');
+        }
+    });
+
+    // Allow updating location when pressing Enter in the input field
+    locationInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyButton.click();
+        }
+    });
+}
 
 
 function initMap() {
@@ -724,8 +749,13 @@ function initMap() {
 //Mexico City, Mexico(19.4326, -99.1332)d
 //Helsinki/Alppikylä, Finland(60.1695, 24.9354)d
 //Sydney Harbour/ Georges Heights, Australia(-33.8395, 151.2573)
+//Kenya(-3.3961, 38.5562)
+//Abashiri, Japan (44.0207, 144.2733)
+//Abu Dhabi, UAE(24.4539, 54.3773)
+//Al Udeid, Qatar(25.1173, 51.3147)
+//Babao, China(42.3917, 127.6992)
 
-    map = L.map('map').setView([19.4326, -99.1332], 9);
+    map = L.map('map').setView([48.8566, 2.3522], 9);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -734,8 +764,8 @@ function initMap() {
     map.on('click', onMapClick);
 
     // Initial marker
-    marker = L.marker([19.4326, -99.1332]).addTo(map);
-    updateLocation(19.4326, -99.1332);
+    marker = L.marker([48.8566, 2.3522]).addTo(map);
+    updateLocation(48.8566, 2.3522);
 }
 
 
@@ -1259,4 +1289,6 @@ document.getElementById('household-size').addEventListener('change', updateFinan
             updateControls();
             updateMonthlyPowerChart([]);
             updateFinancialAspects();
+            initializeLocationInput();
+
         };
