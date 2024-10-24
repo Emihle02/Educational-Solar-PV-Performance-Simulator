@@ -16,26 +16,28 @@
                 <h2>Location Settings</h2>
                 <input type="text" id="location" placeholder="Enter coordinates (lat, lng)" />
                  <button id="applyLocation">Apply</button>
-                <p>Optimum angle: <span id="optimumAngle">--</span>°</p>
-                <p>Peak Generated Power: <span id="peakPower">--</span> W</p>
+                <p>Optimum Tilt Angle: <span id="optimumAngle">--</span>°</p>
+                <p>Peak Generated Power of 1kW Panel: <span id="peakPower">--</span> W</p>
             </div>
 
             <div class="card controls">
                 <h2>Controls</h2>
-                <label for="azimuth">Surface Azimuth Angle: <span id="azimuthValue">0</span>°</label>
+                <label for="azimuth"><span class="tooltip" data-tooltip="Like a compass reading that shows which way your surface faces.">Surface Azimuth Angle:</span>
+                    <span id="azimuthValue">0</span>°</label>
                 <input type="range" id="azimuth" min="0" max="360" value="0" oninput="updateControls()" />
-                <label for="tilt">Tilt Angle: <span id="tiltValue">0</span>°</label>
+                <label for="tilt"><span class="tooltip" data-tooltip="How much the surface of the panel is tilted up.">Tilt Angle:</span>
+                    <span id="tiltValue">0</span>°</label>
                 <input type="range" id="tilt" min="0" max="90" value="0" oninput="updateControls()" />
-                <label for="soiling">Soiling Ratio: <span id="soilingValue">0</span></label>
+                <label for="soiling"><span class="tooltip" data-tooltip="How dirty or dusty the surface is, affecting its performance.">Soiling Ratio:</span>
+                    <span id="soilingValue">0</span></label>
                 <input type="range" id="soiling" min="0" max="1" step="0.01" value="0" oninput="updateControls()" />
-                <label for="zoom">Map Zoom: <span id="zoomValue">5</span></label>
-                <input type="range" id="zoom" min="1" max="10" value="5" oninput="updateControls()" />
-                <label for="soiling">Linear Shading: <span id="shadingValue">0</span></label>
+                <label for="soiling"><span class="tooltip" data-tooltip="The percentage of the surface blocked by shadows made by tress, buildings, etc.">Linear Shading:</span>
+                    <span id="shadingValue">0</span></label>
                 <input type="range" id="shading" min="0" max="100" step="1" value="0" oninput="updateControls()" />
             </div>
 
             <div class="card output-power">
-                <h2>Daily Output Power</h2>
+                <h2>Hourly Power Output</h2>
                 <canvas id="powerChart"></canvas>
             </div>
 
@@ -45,7 +47,7 @@
             </div>
 
             <div class="card">
-                <h2>1kW PV Module</h2>
+                <h2>PV Module Orientation</h2>
                 <div id="solar-diagram">
             </div>
 
@@ -65,7 +67,7 @@
             <h2>Solar System Financial Calculator</h2>
 
             <div class="input-group">
-                <label for="household-size">Household Size:</label>
+                <label for="household-size">PV System Size:</label>
                 <select id="household-size">
                     <option value="small">Small (3 members)</option>
                     <option value="medium">Medium (4-6 members)</option>

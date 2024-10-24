@@ -7,23 +7,20 @@ let monthlyPowerChart;
 let shadingFactor = 1; // No shading by default
 
 // Constants for calculations
-const LONGI_PANEL_COST = 5227; // R per Longi Solar panel
-const LONGI_PANEL_CAPACITY = 0.45; // kW (450W per Longi Solar panel)
-const PEAK_SUN_HOURS = 5.35; // Average peak sun hours per day
 
+//tooltips, the hovering 
+const tooltips = document.querySelectorAll('.tooltip');
 
-// Tariffs for domestic customers
-const TARIFF_0_600 = 3.91; // R per kWh for 0-600 kWh
-const TARIFF_600_PLUS = 4.75; // R per kWh for 600+ kWh
+tooltips.forEach(tooltip => {
+    tooltip.addEventListener('mouseenter', () => {
+        // Show tooltip (already handled by CSS)
+    });
 
+    tooltip.addEventListener('mouseleave', () => {
+        // Hide tooltip (already handled by CSS)
+    });
+});
 
-const MONTHLY_CONSUMPTION_SMALL = 100; // kWh
-const MONTHLY_CONSUMPTION_MEDIUM = 800; // kWh
-const MONTHLY_CONSUMPTION_LARGE = 2000; // kWh
-
-const DAILY_CONSUMPTION_SMALL = 100 / 30; // kWh/day for small house
-const DAILY_CONSUMPTION_MEDIUM = 800 / 30; // kWh/day for medium house
-const DAILY_CONSUMPTION_LARGE = 2000 / 30; // kWh/day for large house
 
 //set tilt angle to the latitude
 //according to practice.
@@ -106,6 +103,18 @@ function updateAzimuth(latitude) {
 
 }
 
+//seasonal change selection
+function addSeasonControl() {
+    const controlsDiv = document.querySelector('.card.controls');
+    const seasonControl = `
+        <label for="season"><span class="tooltip" data-tooltip="Select the season to see the affect on the power output.">Season:</label>
+        <select id="season" onchange="updateControls()">
+            <option value="summer">Summer Day</option>
+            <option value="winter">Winter Day</option>
+        </select>
+    `;
+    controlsDiv.insertAdjacentHTML('beforeend', seasonControl);
+}
 
 /**
  * Gets the hourly solar data that is needed to calculate the peak power of a given location
@@ -114,15 +123,34 @@ function updateAzimuth(latitude) {
  * @returns solar_data
  */
 async function getHourlySolarData(lat, lng) {
+    const isNorthernHemisphere = lat > 0;
+    const season = document.getElementById('season').value;
+    
+    // Define solstice dates based on hemisphere
+    const solsticeDates = {
+        northern: {
+            summer: "0621", // June 21
+            winter: "1221"  // December 21
+        },
+        southern: {
+            summer: "1221", // December 21
+            winter: "0621"  // June 21
+        }
+    };
 
-    const start = getStartAndEndDate()[0];
-    const end = getStartAndEndDate()[1];
-    const nasa_url = getApiUrl(start,end,lat,lng,"hourly")
-
+    // Select the appropriate dates based on hemisphere
+    const hemisphere = isNorthernHemisphere ? 'northern' : 'southern';
+    const date = solsticeDates[hemisphere][season];
+    
+    // Use the year 2023 for consistency
+    const year = "2023";
+    const fullDate = `${year}${date}`;
+    
+    const nasa_url = getApiUrl(fullDate, fullDate, lat, lng, "hourly");
+    
     try {
-        const solar_data = retrieveSolarData(nasa_url,lat,lng)
-        return solar_data
-
+        const solar_data = await retrieveSolarData(nasa_url, lat, lng);
+        return solar_data;
     } catch (error) {
         console.error('Error fetching solar data:', error);
         return null;
@@ -139,14 +167,13 @@ async function getHourlySolarData(lat, lng) {
  * @param {String} period the type of data we want daily/hourly
  * @returns api url
  */
-function getApiUrl(startDate, endDate, lat, lng, period){
-
-    const main_url = `https://power.larc.nasa.gov/api/temporal/${period}/point?`
-    const duration = `start=${startDate}&end=${endDate}`
-    const coord = `&latitude=${lat}&longitude=${lng}`
-    const parameters = `&community=re&parameters=ALLSKY_SFC_SW_DWN,ALLSKY_SFC_SW_DIFF,ALLSKY_SFC_SW_DNI&format=json&time-standard=lst`
+function getApiUrl(startDate, endDate, lat, lng, period) {
+    const main_url = `https://power.larc.nasa.gov/api/temporal/${period}/point?`;
+    const duration = `start=${startDate}&end=${endDate}`;
+    const coord = `&latitude=${lat}&longitude=${lng}`;
+    const parameters = `&community=re&parameters=ALLSKY_SFC_SW_DWN,ALLSKY_SFC_SW_DIFF,ALLSKY_SFC_SW_DNI&format=json&time-standard=lst`;
     const nasa_url = main_url + duration + coord + parameters;
-    return nasa_url
+    return nasa_url;
 }
 
 function getStartAndEndDate(){
@@ -623,16 +650,14 @@ function createSunPathDiagram(lat, lng) {
 
     // Label axes
     ctx.fillStyle = 'black';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    for (let az = 0; az <= 360; az += 20) {
-        const x = (az / 360) * width;
-        ctx.fillText(az + '°', x, height - 5);
-    }
-    for (let el = 0; el <= 90; el += 10) {
-        const y = height - (el / 90) * height;
-        ctx.fillText(el + '°', 20, y);
-    }
+    ctx.font = '16px Arial'; // Increased font size for the labels
+    ctx.textAlign = 'left';
+
+    // Y-axis labels for Horizon and Solar Noon
+    ctx.fillText('Horizon', 40, height - 5); // Move 'Horizon' more to the right
+    ctx.fillText('Solar Noon', 40, 15);       // Move 'Solar Noon' more to the right
+
+    // X-axis cardinal direction labels only
     ctx.fillText('E', width * 0.25, height - 20);
     ctx.fillText('S', width * 0.5, height - 20);
     ctx.fillText('W', width * 0.75, height - 20);
@@ -650,14 +675,14 @@ function createSunPathDiagram(lat, lng) {
             new Date(year, 2, 20),  // Spring equinox (green)
             new Date(year, 5, 21),  // Summer solstice (red)
         ];
-        legends = ['Winter solstice', 'Spring/Autumn equinox', 'Summer solstice'];
+        legends = ['Winter ', 'Spring/Autumn ', 'Summer'];
     } else {
         days = [
             new Date(year, 5, 21),  // Winter solstice (blue)
             new Date(year, 2, 20),  // Spring equinox (green)
             new Date(year, 11, 21), // Summer solstice (red)
         ];
-        legends = ['Winter solstice', 'Spring/Autumn equinox', 'Summer solstice'];
+        legends = ['Winter', 'Spring/Autumn', 'Summer'];
     }
 
     const colors = ['blue', 'green', 'red'];
@@ -683,7 +708,7 @@ function createSunPathDiagram(lat, lng) {
         ctx.beginPath();
         sunPositions.forEach((pos, i) => {
             const x = (pos.azimuth / 360) * width;
-            const y = height - (pos.altitude / 90) * height;
+            const y = height - (pos.altitude / 90) * height; // Map altitude directly to y
 
             if (i === 0) {
                 ctx.moveTo(x, y);
@@ -691,15 +716,17 @@ function createSunPathDiagram(lat, lng) {
                 ctx.lineTo(x, y);
             }
 
-        // Add hour markers
-        // Add hour markers
-        if (pos.hour % 1 === 0) {
-            ctx.fillStyle = colors[index];
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.fillText(pos.hour, x, y - 10);
-        }
+            // Add hour markers in "HH:MM" format
+            if (pos.hour % 1 === 0) {
+                ctx.fillStyle = colors[index];
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                ctx.fill();
+
+                // Format the hour as "HH:MM"
+                const hourFormatted = `${String(pos.hour).padStart(2, '0')}:00`;
+                ctx.fillText(hourFormatted, x, y - 10);
+            }
         });
         ctx.stroke();
     });
@@ -708,8 +735,10 @@ function createSunPathDiagram(lat, lng) {
     legends.forEach((text, i) => {
         ctx.fillStyle = colors[i];
         ctx.fillText(text, width - 100, 20 + i * 20);
-        });
+    });
 }
+
+
 //the user inputs coordinates
 
 function initializeLocationInput() {
@@ -754,8 +783,7 @@ function initMap() {
 //Abu Dhabi, UAE(24.4539, 54.3773)
 //Al Udeid, Qatar(25.1173, 51.3147)
 //Babao, China(42.3917, 127.6992)
-
-    map = L.map('map').setView([48.8566, 2.3522], 9);
+    map = L.map('map').setView([-33.9344,18.8640], 9);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -764,8 +792,8 @@ function initMap() {
     map.on('click', onMapClick);
 
     // Initial marker
-    marker = L.marker([48.8566, 2.3522]).addTo(map);
-    updateLocation(48.8566, 2.3522);
+    marker = L.marker([-33.9344,18.8640]).addTo(map);
+    updateLocation(-33.9344,18.8640);
 }
 
 
@@ -805,8 +833,8 @@ async function updateLocation(lat, lng) {
 
         map.setView([lat, lng], map.getZoom());
     } catch (error) {
-        console.error('Error updating location:', error);
-        document.getElementById('peakPower').innerText = 'Error: ' + error.message;
+        //console.error('Error updating location:', error);
+        //document.getElementById('peakPower').innerText = 'Error: ' + error.message;
     }
 
     const tilt = document.getElementById('tilt').value;
@@ -861,42 +889,54 @@ async function updatePeakPowerByControl(lat, lng, azimuth, tilt) {
 }
 
 
+
+let isUpdating = false;
+let updateTimeout;
+
 function updateControls() {
+    // Clear any pending timeout
+    clearTimeout(updateTimeout);
+
+    // Get all control values
     const azimuth = parseFloat(document.getElementById('azimuth').value);
     const tilt = parseFloat(document.getElementById('tilt').value);
-    console.log("The tilt: ", tilt)
-    console.log("The azimuth: ",azimuth)
-
-    updateSolarDiagram(tilt, azimuth);
     const soiling = document.getElementById('soiling').value;
-    const zoom = document.getElementById('zoom').value;
-    console.log("The soil", soiling)
-    console.log("The zoom", zoom)
-
     const shading = parseFloat(document.getElementById('shading').value);
-    shadingFactor = 1 - (shading / 100);
-    document.getElementById('shadingValue').textContent = shading + '%';
 
+    // Update UI values immediately
     document.getElementById('azimuthValue').textContent = azimuth;
     document.getElementById('tiltValue').textContent = tilt;
     document.getElementById('soilingValue').textContent = soiling;
-    document.getElementById('zoomValue').textContent = zoom;
-
-    map.setZoom(zoom);
-
-    // Recalculate peak power with new tilt and azimuth
-    const lat = parseFloat(document.getElementById('location').value.split(',')[0]);
-    const lng = parseFloat(document.getElementById('location').value.split(',')[1]);
-
-    console.log("Just before the storm")
-    updatePeakPowerByControl(lat, lng,azimuth, tilt);
+    document.getElementById('shadingValue').textContent = shading + '%';
+    
+    // Update visual diagram immediately
     updateSolarDiagram(tilt, azimuth);
-}
+    
+    // Update shading factor
+    shadingFactor = 1 - (shading / 100);
 
+    // Debounce the heavy calculations
+    updateTimeout = setTimeout(() => {
+        if (!isUpdating) {
+            isUpdating = true;
+
+            // Get location only once
+            const [lat, lng] = document.getElementById('location').value
+                .split(',')
+                .map(coord => parseFloat(coord.trim()));
+
+            // Perform the heavy calculations
+            updatePeakPowerByControl(lat, lng, azimuth, tilt)
+                .finally(() => {
+                    isUpdating = false;
+                });
+        }
+    }, 100); // 300ms delay before heavy calculations
+}
 
 function initSolarDiagram() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a2e);
+    scene.background = new THREE.Color(0x353553);
 
     // Use perspective camera
     camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
@@ -1008,7 +1048,7 @@ function createProtractorIndicator(radius, color) {
 function createLabel(text, scale) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    context.font = '70px Arial'; // Increase font size
+    context.font = '80px Arial'; // Increase font size
     context.fillStyle = 'white';
     context.fillText(text, 0, 70);
 
@@ -1060,6 +1100,13 @@ function updateLabel(name, text, position) {
 function updatePowerChart(hourlyPower) {
     const ctx = document.getElementById('powerChart').getContext('2d');
     const soilingRatio = parseFloat(document.getElementById('soiling').value);
+    const season = document.getElementById('season').value;
+    const isNorthernHemisphere = parseFloat(document.getElementById('location').value.split(',')[0]) > 0;
+    
+    const hemisphere = isNorthernHemisphere ? 'Northern' : 'Southern';
+    const seasonDate = isNorthernHemisphere ? 
+        (season === 'summer' ? 'June 21' : 'December 21') :
+        (season === 'summer' ? 'December 21' : 'June 21');
 
     // Ensure hourlyPower is an array with 24 elements
     const powerWithoutSoiling = Array.isArray(hourlyPower) && hourlyPower.length === 24
@@ -1133,11 +1180,13 @@ function updatePowerChart(hourlyPower) {
                     mode: 'index',
                     intersect: false,
                 },
+                title: {
+                    display: true,
+                    text: `${hemisphere} Hemisphere - ${season.charAt(0).toUpperCase() + season.slice(1)} Solstice (${seasonDate})`
+                }
             },
         },
     });
-
-    console.log('Hourly Power Data:', powerWithoutSoiling);
 }
 
 
@@ -1211,69 +1260,7 @@ function calculatePanelCount(dailyConsumption) {
 }
 
 // Estimate installation cost
-function calculateInstallationCost(panelCount) {
-    return panelCount * LONGI_PANEL_COST;
-}
 
-// Calculate bill reduction based on PV system size and Cape Town tariffs
-// Estimate bill reduction based on PV system size and tariffs
-function calculateBills(pvSize, monthlyConsumption) {
-    const monthlyPVProduction = pvSize * PEAK_SUN_HOURS * 30; // PV production based on daily peak sun hours
-    const daytimeConsumption = 0.22 * monthlyConsumption; // Assume 22% of consumption happens during the day
-    const gridUsage = monthlyConsumption - Math.min(monthlyPVProduction, daytimeConsumption); // Any excess from PV during the day is sent back to the grid
-
-    let reducedBill;
-    if (gridUsage <= 600) {
-        reducedBill = gridUsage * TARIFF_0_600;
-    } else {
-        const upTo600 = 600 * TARIFF_0_600;
-        const above600 = (gridUsage - 600) * TARIFF_600_PLUS;
-        reducedBill = upTo600 + above600;
-    }
-
-    const originalBill = monthlyConsumption <= 600 ?
-        monthlyConsumption * TARIFF_0_600 :
-        600 * TARIFF_0_600 + (monthlyConsumption - 600) * TARIFF_600_PLUS;
-
-    return {
-        originalBill: originalBill.toFixed(2), // Return original bill
-        reducedBill: reducedBill.toFixed(2)    // Return reduced bill after solar
-    };
-}
-
-
-function updateFinancialAspects() {
-    const householdSize = document.getElementById('household-size').value;
-    let monthlyConsumption;
-
-    // Determine household size and monthly consumption
-    if (householdSize === 'small') {
-        monthlyConsumption = MONTHLY_CONSUMPTION_SMALL;
-    } else if (householdSize === 'medium') {
-        monthlyConsumption = MONTHLY_CONSUMPTION_MEDIUM;
-    } else {
-        monthlyConsumption = MONTHLY_CONSUMPTION_LARGE;
-    }
-
-    const dailyConsumption = monthlyConsumption / 30;
-    const panelCount = calculatePanelCount(dailyConsumption);
-    const pvSize = panelCount * LONGI_PANEL_CAPACITY;
-    const installationCost = calculateInstallationCost(panelCount);
-
-    document.getElementById('monthly-consumption').textContent = `${monthlyConsumption.toFixed(2)} kWh`;
-    document.getElementById('pv-size').textContent = `${pvSize.toFixed(2)} kW`;
-    document.getElementById('installation-cost').textContent = `R${installationCost.toFixed(2)}`;
-    document.getElementById('panel-count').textContent = `${panelCount} Panels(450W)`;
-
-    const bills = calculateBills(pvSize, monthlyConsumption);
-    document.getElementById('original-bill').textContent = `R${bills.originalBill}`;
-    document.getElementById('reduced-bill').textContent = `R${bills.reducedBill}`;
-}
-
-// Event listener to trigger the calculation when the user selects a household size
-document.addEventListener('DOMContentLoaded', updateFinancialAspects);
-
-document.getElementById('household-size').addEventListener('change', updateFinancialAspects);
 
         function onMapClick(e) {
             var lat = e.latlng.lat;
@@ -1284,11 +1271,10 @@ document.getElementById('household-size').addEventListener('change', updateFinan
 
         window.onload = () => {
             initMap();
+            addSeasonControl();  // Add this line
             updatePowerChart();
-            initSolarDiagram(); // Add this line
+            initSolarDiagram();
             updateControls();
-            updateMonthlyPowerChart([]);
             updateFinancialAspects();
             initializeLocationInput();
-
         };
