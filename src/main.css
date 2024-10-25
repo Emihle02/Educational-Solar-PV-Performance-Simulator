@@ -10,261 +10,196 @@ body {
     padding: 20px;
     box-sizing: border-box;
 }
+
 h1 {
     margin-bottom: 20px;
+    color: #ffffff;
+    text-align: center;
 }
+
 .dashboard {
-display: grid;
-grid-template-columns: repeat(3, 1fr);
-grid-template-rows: auto auto auto auto;
-gap: 20px;
-width: 100%;
-max-width: 1200px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: auto auto;
+    gap: 20px;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
 }
+
+/* First row cards */
+#map,
+.card:nth-child(2),
+.controls,
+#solar-diagram {
+    grid-row: 1;
+    height: 400px;
+}
+
+/* Second row cards */
+#pv-module,
+.output-power,
 .card.financial-aspect {
-grid-column: span 3;
-padding: 20px;
-background-color: #f9f9f9;
-border-radius: 10px;
-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-max-width: 600px;
-margin: auto;
+    grid-row: 2;
+    height: 400px;
 }
 
-h2 {
-text-align: center;
-color: #ffffff;
-}
-
-.input-group, .output-group, .savings {
-margin-bottom: 20px;
-}
-
-.input-group label, .input-group select {
-display: inline-block;
-margin-right: 10px;
-font-size: 16px;
-}
-
-.input-group select {
-padding: 5px;
-border-radius: 5px;
-border: 1px solid #f4f4f4;
-font-size: 16px;
-}
-
-.output-group p, .savings p {
-margin: 8px 0;
-font-size: 16px;
-color: #ffffff;
-}
-
-.savings h3 {
-margin-top: 20px;
-font-size: 18px;
-color: #ffffff;
-}
-
-span {
-font-weight: bold;
-}
-
-
+/* Individual card styles */
 .card {
-background: linear-gradient(to bottom right, #13072e, #3f2182);
-border-radius: 10px;
-padding: 20px;
-box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-border: 1px solid #b3aaff;
-transition: all 0.3s ease;
-display: flex;
-flex-direction: column; /* Ensure vertical layout within the card */
-}
+    background: linear-gradient(to bottom right, #13072e, #3f2182);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #b3aaff;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative; /* Add this */
+  }
+  
 
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 12px rgba(255, 255, 255, 0.2);
 }
+
 .card h2 {
-margin: 0 0 10px 0; /* Margin at the bottom only */
-font-size: 1.5em; /* Adjust size if necessary */
-color: #ffffff;
-}
-.angle-label {
-position: absolute;
-font-size: 12px;
-color: #ffffff;
+    margin: 0 0 15px 0;
+    font-size: 1.2em;
+    color: #ffffff;
+    text-align: center;
 }
 
-.controls input {
-    width: 100%;
-    margin: 10px 0;
-}
-.output-power canvas {
-    width: 100%;
-}
-.card.monthly-output {
-grid-column: span 1; /* Make it span all three columns */
-height: 400px; /* Set a fixed height or adjust as needed */
-}
-
-.monthly-output h2 {
-margin-bottom: 15px;
-}
-
-#monthlyPowerChart {
-width: 100%;
-height: calc(100% - 40px); /* Subtract the height of the h2 from the total height */
-}
-
-
-@media (max-width: 768px) {
-    .dashboard {
-    grid-template-columns: 1fr 1fr 1fr; /* Single column layout for small screens */
-    grid-template-rows: auto; /* Stack all cards vertically */
-
-    }
-
-    .output-power {
-    grid-column: span 1; /* Span across two columns */
-    grid-row: 3; /* Place in the third row */
-    height: 400px; /* Adjust the height */
-    position: relative; /* Ensure the child canvas is positioned correctly */
-    }
-
-    #map {
-    grid-column: span 1; /* Span one column */
-    grid-row: 1; /* Place in the third row */
-    height: 400px; /* Adjust the height */
-    }
-
-    #powerChart {
-    width: 100%;
-    height: 100%; /* Ensure the canvas takes up the full height of the card */
-    display: block; /* Remove extra spacing around the canvas */
-    }
-
-    .card.monthly-output {
-    grid-column: span 1;
-    height: 300px; /* Adjust height for mobile if needed */
-    }
-
-}
-
-.output-power {
-grid-column: span 2; /* Make this span across all columns */
-grid-row: 3; /* Place this in the third row */
-height: 400px; /* Adjust the height as needed */
-}
-
+/* Specific card adjustments */
 #map {
-grid-column: span 1; /* Span one column */
-grid-row: 1; /* Place in the third row */
-height: 400px; /* Adjust the height */
+    grid-column: 1;
 }
 
-.popup-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+.card:nth-child(2) {
+    grid-column: 2;
 }
 
-.popup-content button {
-    margin-top: 10px;
-    padding: 5px 10px;
-    border: none;
-    background-color: #4caf50;
-    color: white;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.popup-content button:hover {
-    background-color: #45a049;
-}
-
-.card.output-power {
-display: flex;
-align-items: center;
-justify-content: center;
+.controls {
+    grid-column: 3;
 }
 
 #solar-diagram {
-width: 300px;
-height: 300px;
-margin: 0 auto;
-background-color: #353553;
+    grid-column: 4;
 }
 
 #pv-module {
-grid-column: span 2;
-height: 500px;
-background: linear-gradient(to bottom right, #13072e, #3f2182);
-border-radius: 10px;
-padding: 20px;
-box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-border: 1px solid #b3aaff;
+    grid-column: 1;
 }
 
-#sunPathDiagram {
-grid-column: span 2; /* Span one column */
-grid-row: 2; /* Place in the third row */
-width: 100%;
-height: 400px;
-max-width: 800px;
-background-color: white;
-border-radius: 5px;
+.output-power:nth-of-type(1) {
+    grid-column: 2;
+}
+
+.output-power:nth-of-type(2) {
+    grid-column: 3;
+}
+
+.card.financial-aspect {
+    grid-column: 4;
+    background: linear-gradient(to bottom right, #13072e, #3f2182);
+    max-width: none;
+    margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .dashboard {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, auto);
+    }
+
+    .card {
+        grid-column: span 1 !important;
+    }
+
+    #map, .card:nth-child(2),
+    .controls, #solar-diagram,
+    #pv-module, .output-power,
+    .card.financial-aspect {
+        height: 350px;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+        padding: 10px;
+    }
+
+    .card {
+        height: 300px !important;
+    }
+}
+
+/* Component-specific styles */
+.controls input {
+    width: 100%;
+    margin: 8px 0;
+}
+
+.input-group, .output-group, .savings {
+    margin-bottom: 15px;
+}
+
+.input-group select {
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #f4f4f4;
+    font-size: 14px;
+}
+
+canvas {
+    width: 100% !important;
+    height: calc(100% - 40px) !important;
 }
 
 .tooltip {
     position: relative;
-    cursor: pointer;
-    border-bottom: 1px dotted #000;  /* Add underline to indicate hover */
-}
-
-/* Tooltip text styling */
-.tooltip::after {
-    content: attr(data-tooltip);  /* Use the data-tooltip attribute */
+    cursor: help;
+    border-bottom: 1px dotted #fff;
+    display: inline-block; /* Add this */
+  }
+  
+  .tooltip::after {
+    content: attr(data-tooltip);
     position: absolute;
-    bottom: 120%;  /* Position above the text */
+    bottom: 100%; /* Changed from 120% */
     left: 50%;
     transform: translateX(-50%);
-    background-color: #333;
+    background-color: rgba(51, 51, 51, 0.95);
     color: #fff;
-    padding: 5px;
+    padding: 8px 12px;
     border-radius: 5px;
     font-size: 12px;
-    white-space: nowrap;
+    white-space: normal; /* Changed from nowrap */
+    max-width: 250px; /* Add maximum width */
+    width: max-content; /* Add this */
     opacity: 0;
-    pointer-events: none;  /* Prevent mouse interactions */
-    transition: opacity 0.3s ease;
-    z-index: 1000;  /* Ensure the tooltip is on top of other elements */
-}
-
-/* Show the tooltip when hovering */
-.tooltip:hover::after {
+    visibility: hidden; /* Add this */
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 1000;
+    margin-bottom: 8px; /* Add some space between tooltip and text */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Show the tooltip */
+  .tooltip:hover::after {
     opacity: 1;
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
+    visibility: visible;
   }
   
-  .season-control {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  /* Add responsive adjustments */
+  @media (max-width: 768px) {
+    .tooltip::after {
+      max-width: 200px;
+      font-size: 11px;
+      padding: 6px 10px;
+    }
   }
   
-  .tooltip {
-    cursor: help;
-  }
-  
-  select {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-  }

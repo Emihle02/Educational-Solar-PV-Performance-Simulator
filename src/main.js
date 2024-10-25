@@ -4,7 +4,128 @@ let powerChart;
 let azimuth;
 let scene, camera, renderer, circle, panel, tiltIndicator, azimuthIndicator;
 let monthlyPowerChart;
-let shadingFactor = 1; // No shading by default
+//let shadingFactor = 1; // No shading by default
+
+
+function calculateSystemRequirements(solarData, houseType) {
+    // Constants
+    const PANEL_RATING = 0.4; // 400W = 0.4kW
+    const GRID_EFFICIENCY = 0.75; // 75% efficiency for grid-connected system
+    const OFF_GRID_EFFICIENCY = 0.65; // 65% efficiency for off-grid (accounting for battery losses)
+    const DAILY_CONSUMPTION = houseType === 'rural' ? 4 : 35; // kWh
+    
+    // Calculate annual energy needed
+    const ANNUAL_ENERGY = DAILY_CONSUMPTION * 365; // kWh
+
+    // Calculate Peak Sun Hours (PSH) using GHI data
+    let dailyGHI = 0;
+    const hourlyValues = [];
+
+    // Sum up all GHI values for the day and store hourly values
+    for (const timestamp in solarData) {
+        const data = JSON.parse(solarData[timestamp]);
+        dailyGHI += data.ghi;
+        hourlyValues.push(data.ghi);
+    }
+
+    // Calculate PSH
+    // PSH is the number of hours per day when solar irradiance averages 1000 W/m²
+    // So we take the total daily irradiance (in Wh/m²) and divide by 1000 W/m²
+    const peakSunHours = dailyGHI / 1000;
+
+    console.log('Peak Sun Hours:', peakSunHours);
+
+    // Calculate system sizes and panel counts for both grid and off-grid
+    const gridCalculations = calculateSystemSize(DAILY_CONSUMPTION, PANEL_RATING, peakSunHours, GRID_EFFICIENCY);
+    const offGridCalculations = calculateSystemSize(DAILY_CONSUMPTION, PANEL_RATING, peakSunHours, OFF_GRID_EFFICIENCY);
+
+    return {
+        dailyConsumption: DAILY_CONSUMPTION,
+        annualConsumption: ANNUAL_ENERGY,
+        gridSystem: gridCalculations,
+        offGridSystem: offGridCalculations,
+        peakSunHours: peakSunHours
+    };
+}
+
+/**
+ * Helper function to calculate system size and panel count
+ * @param {number} dailyEnergy Daily energy consumption in kWh
+ * @param {number} panelRating Panel rating in kW
+ * @param {number} sunHours Average sun hours
+ * @param {number} efficiency System efficiency
+ * @returns {Object} System size and panel count
+ */
+function calculateSystemSize(dailyEnergy, panelRating, sunHours, efficiency) {
+    // Calculate required system size in kW
+    const systemSize = dailyEnergy / (sunHours * efficiency);
+    
+    // Calculate number of panels needed
+    const panelCount = Math.ceil(systemSize / panelRating);
+    
+    return {
+        systemSize: systemSize,
+        panelCount: panelCount
+    };
+}
+
+/**
+ * Updates the UI with the calculation results
+ * @param {Object} results Calculation results from calculateSystemRequirements
+ */
+function updateCalculatorUI(results) {
+    // Update daily consumption
+    document.getElementById('daily-consumption').textContent = 
+        `${results.dailyConsumption.toFixed(1)} kWh`;
+    
+    // Update annual consumption
+    document.getElementById('annual-consumption').textContent = 
+        `${results.annualConsumption.toFixed(1)} kWh`;
+    
+    // Update grid-connected system details
+    document.getElementById('pv-grid-size').textContent = 
+        `${results.gridSystem.systemSize.toFixed(2)} kW`;
+    document.getElementById('panel-count-grid').textContent = 
+        results.gridSystem.panelCount;
+    
+    // Update off-grid system details
+    document.getElementById('pv-off-grid-size').textContent = 
+        `${results.offGridSystem.systemSize.toFixed(2)} kW`;
+    document.getElementById('panel-count-off-grid').textContent = 
+        results.offGridSystem.panelCount;
+}
+
+// Event listener for the calculate button
+document.getElementById('calculate-button').addEventListener('click', async () => {
+    const houseType = document.getElementById('house-type').value;
+    const lat = parseFloat(document.getElementById('location').value.split(',')[0]);
+    const lng = parseFloat(document.getElementById('location').value.split(',')[1]);
+    
+    try {
+        const solarData = await getHourlySolarData(lat, lng);
+        if (solarData) {
+            const results = calculateSystemRequirements(solarData, houseType);
+            updateCalculatorUI(results);
+        } else {
+            console.error('No solar data available');
+        }
+    } catch (error) {
+        console.error('Error calculating system requirements:', error);
+    }
+});
+
+function calculateShadingFactor(shading) {
+    if (shading <= 20) {
+        // Light shading: Reduce power by 10% to 20%
+        return 1 - (shading / 200); // 10% to 20% reduction
+    } else if (shading <= 50) {
+        // Moderate shading: Reduce power by 30% to 50%
+        return 1 - (0.3 + (shading - 20) / 100); // 30% to 50% reduction
+    } else {
+        // Heavy shading: Reduce power by 60% to 80%
+        return 1 - (0.6 + (shading - 50) / 100); // 60% to 80% reduction
+    }
+}
 
 // Constants for calculations
 
@@ -20,6 +141,17 @@ tooltips.forEach(tooltip => {
         // Hide tooltip (already handled by CSS)
     });
 });
+
+function calculateShadingEffect(shading) {
+    // Exponential shading model for more realistic power reduction
+    return Math.pow(1 - (shading / 100), 2);
+
+}
+
+function calculatePowerWithShading(hourlyPower, shading) {
+    const shadingFactor = calculateShadingEffect(shading);
+    return hourlyPower.map(value => value * shadingFactor);
+}
 
 
 //set tilt angle to the latitude
@@ -446,7 +578,6 @@ function calculateAngleOfIncidence(tilt, surfaceAzimuth, solarZenith, solarAzimu
  * @returns max power generated and an array of the hourly power
  */
 function calculatheourlyPeakPower(solarData, tilt, azimuth, lat, lng) {
-
     let maxPower = 0;
     const hourlyPower = new Array(24).fill(0);
 
@@ -461,17 +592,24 @@ function calculatheourlyPeakPower(solarData, tilt, azimuth, lat, lng) {
 
         // Calculate angle of incidence (θ)
         const theta = calculateAngleOfIncidence(tilt, azimuth, SZA, SAA);
-        const power = calculatePower(theta, GHI, DHI, DNI, tilt) * shadingFactor; //when the shading factor is 1 then shading has no effect
+        const power = calculatePower(theta, GHI, DHI, DNI, tilt); // Raw power calculation
+
+        // Adjust power for shading using the new non-linear shading factor
+        const shading = parseFloat(document.getElementById('shading').value);
+        const shadingFactor = calculateShadingFactor(shading); // New shading factor
+        const powerWithShading = power * shadingFactor;
+
         // Update the hourly and maximum power values
         const hour = get_correct_dateTime_format(timestamp).getHours();
-        hourlyPower[hour] = Math.max(hourlyPower[hour], power.toFixed(2));
+        hourlyPower[hour] = Math.max(hourlyPower[hour], powerWithShading.toFixed(2));
 
-        if (power > maxPower) {
-            maxPower = power;
+        if (powerWithShading > maxPower) {
+            maxPower = powerWithShading;
         }
     }
     return { maxPower, hourlyPower };
 }
+
 
 
 function calculatePower(theta,GHI,DHI,DNI,tilt){
@@ -620,6 +758,7 @@ function createSunPathDiagram(lat, lng) {
     const width = canvas.width;
     const height = canvas.height;
 
+    // Clear and set background
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, width, height);
@@ -648,51 +787,59 @@ function createSunPathDiagram(lat, lng) {
     ctx.lineTo(width, height);
     ctx.stroke();
 
-    // Label axes
+    // Label axes with hemisphere-specific cardinal directions
     ctx.fillStyle = 'black';
-    ctx.font = '16px Arial'; // Increased font size for the labels
+    ctx.font = '16px Arial';
     ctx.textAlign = 'left';
-
-    // Y-axis labels for Horizon and Solar Noon
-    ctx.fillText('Horizon', 40, height - 5); // Move 'Horizon' more to the right
-    ctx.fillText('Solar Noon', 40, 15);       // Move 'Solar Noon' more to the right
-
-    // X-axis cardinal direction labels only
-    ctx.fillText('E', width * 0.25, height - 20);
-    ctx.fillText('S', width * 0.5, height - 20);
-    ctx.fillText('W', width * 0.75, height - 20);
-    ctx.fillText('N', width - 20, height - 20);
-
-    // Calculate sun positions for different days of the year
-    const year = new Date().getFullYear();
-
-    let days;
-    let legends;
+    ctx.fillText('Horizon', 40, height - 5);
+    ctx.fillText('Zenith', 40, 15);
 
     if (isNorthernHemisphere) {
+        // Northern hemisphere: S in middle
+        ctx.fillText('E', width * 0.25, height - 20);
+        ctx.fillText('S', width * 0.5, height - 20);
+        ctx.fillText('W', width * 0.75, height - 20);
+        ctx.fillText('N', width - 20, height - 20);
+    } else {
+        // Southern hemisphere: N in middle
+        ctx.fillText('E', width * 0.25, height - 20);
+        ctx.fillText('N', width * 0.5, height - 20);
+        ctx.fillText('W', width * 0.75, height - 20);
+        ctx.fillText('S', width - 20, height - 20);
+    }
+
+    // Calculate sun positions
+    const year = new Date().getFullYear();
+    let days, legends;
+    
+    if (isNorthernHemisphere) {
         days = [
-            new Date(year, 11, 21), // Winter solstice (blue)
-            new Date(year, 2, 20),  // Spring equinox (green)
-            new Date(year, 5, 21),  // Summer solstice (red)
+            new Date(year, 11, 21), // Winter solstice
+            new Date(year, 2, 20),  // Spring equinox
+            new Date(year, 5, 21),  // Summer solstice
         ];
-        legends = ['Winter ', 'Spring/Autumn ', 'Summer'];
+        legends = ['Winter', 'Spring/Autumn', 'Summer'];
     } else {
         days = [
-            new Date(year, 5, 21),  // Winter solstice (blue)
-            new Date(year, 2, 20),  // Spring equinox (green)
-            new Date(year, 11, 21), // Summer solstice (red)
+            new Date(year, 5, 21),  // Winter solstice
+            new Date(year, 2, 20),  // Spring equinox
+            new Date(year, 11, 21), // Summer solstice
         ];
         legends = ['Winter', 'Spring/Autumn', 'Summer'];
     }
 
     const colors = ['blue', 'green', 'red'];
 
+    // Draw paths for each season
     days.forEach((day, index) => {
         const sunPositions = [];
-        for (let hour = 0; hour < 24; hour++) {
+        
+        // Calculate positions with smaller time intervals for smoother curves
+        for (let hour = 0; hour < 24; hour += 0.25) { // Using 15-minute intervals
             const date = new Date(day.getTime());
-            date.setHours(hour, 0, 0);
+            date.setHours(Math.floor(hour), (hour % 1) * 60, 0);
             const sunPosition = SunCalc.getPosition(date, lat, lng);
+            
             if (sunPosition.altitude > 0) {
                 sunPositions.push({
                     azimuth: (sunPosition.azimuth * 180 / Math.PI + 180) % 360,
@@ -702,33 +849,36 @@ function createSunPathDiagram(lat, lng) {
             }
         }
 
-        // Plot sun path
+        // Draw continuous path
         ctx.strokeStyle = colors[index];
         ctx.lineWidth = 2;
         ctx.beginPath();
+        
         sunPositions.forEach((pos, i) => {
             const x = (pos.azimuth / 360) * width;
-            const y = height - (pos.altitude / 90) * height; // Map altitude directly to y
-
+            const y = height - (pos.altitude / 90) * height;
+            
             if (i === 0) {
                 ctx.moveTo(x, y);
             } else {
                 ctx.lineTo(x, y);
             }
-
-            // Add hour markers in "HH:MM" format
-            if (pos.hour % 1 === 0) {
-                ctx.fillStyle = colors[index];
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, 2 * Math.PI);
-                ctx.fill();
-
-                // Format the hour as "HH:MM"
-                const hourFormatted = `${String(pos.hour).padStart(2, '0')}:00`;
-                ctx.fillText(hourFormatted, x, y - 10);
-            }
         });
         ctx.stroke();
+
+        // Add hour markers and labels
+        sunPositions.filter(pos => Math.floor(pos.hour) === pos.hour).forEach(pos => {
+            const x = (pos.azimuth / 360) * width;
+            const y = height - (pos.altitude / 90) * height;
+            
+            ctx.fillStyle = colors[index];
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+
+            const hourFormatted = `${String(Math.floor(pos.hour)).padStart(2, '0')}`;
+            ctx.fillText(hourFormatted, x, y - 10);
+        });
     });
 
     // Add legend
@@ -737,8 +887,6 @@ function createSunPathDiagram(lat, lng) {
         ctx.fillText(text, width - 100, 20 + i * 20);
     });
 }
-
-
 //the user inputs coordinates
 
 function initializeLocationInput() {
@@ -868,6 +1016,11 @@ async function updatePeakPowerByControl(lat, lng, azimuth, tilt) {
             } else {
                 document.getElementById('peakPower').innerText = maxPower.toFixed(2);
             }
+
+            //const consumptionType = document.querySelector('input[name="consumptionType"]:checked').value;
+            //const panelCalculations = calculateRequiredPanels(solarData, consumptionType);
+            //updatePanelCalculationUI(panelCalculations);
+
             updatePowerChart(hourlyPower);
             const monthlyAveragePower = calculateMonthlyAverages(dailyData, tilt, azimuth, lat);
             updateMonthlyPowerChart(monthlyAveragePower);
@@ -879,8 +1032,8 @@ async function updatePeakPowerByControl(lat, lng, azimuth, tilt) {
 
         map.setView([lat, lng], map.getZoom());
     } catch (error) {
-        console.error('Error updating location:', error);
-        document.getElementById('peakPower').innerText = 'Error: ' + error.message;
+        //console.error('Error updating location:', error);
+        //document.getElementById('peakPower').innerText = 'Error: ' + error.message;
     }
 
     initSolarDiagram(); // Add this line
@@ -900,32 +1053,30 @@ function updateControls() {
     // Get all control values
     const azimuth = parseFloat(document.getElementById('azimuth').value);
     const tilt = parseFloat(document.getElementById('tilt').value);
-    const soiling = document.getElementById('soiling').value;
+    const soiling = parseFloat(document.getElementById('soiling').value);
     const shading = parseFloat(document.getElementById('shading').value);
 
     // Update UI values immediately
     document.getElementById('azimuthValue').textContent = azimuth;
     document.getElementById('tiltValue').textContent = tilt;
-    document.getElementById('soilingValue').textContent = soiling;
+    document.getElementById('soilingValue').textContent = soiling + '%';
     document.getElementById('shadingValue').textContent = shading + '%';
-    
-    // Update visual diagram immediately
-    updateSolarDiagram(tilt, azimuth);
-    
-    // Update shading factor
-    shadingFactor = 1 - (shading / 100);
 
-    // Debounce the heavy calculations
+    // Update solar diagram
+    updateSolarDiagram(tilt, azimuth);
+
+    // No longer a simple linear shading factor
+    shadingFactor = calculateShadingFactor(shading);
+
+    // Debounce heavy calculations
     updateTimeout = setTimeout(() => {
         if (!isUpdating) {
             isUpdating = true;
 
-            // Get location only once
-            const [lat, lng] = document.getElementById('location').value
-                .split(',')
-                .map(coord => parseFloat(coord.trim()));
+            // Get location
+            const [lat, lng] = document.getElementById('location').value.split(',').map(coord => parseFloat(coord.trim()));
 
-            // Perform the heavy calculations
+            // Perform calculations
             updatePeakPowerByControl(lat, lng, azimuth, tilt)
                 .finally(() => {
                     isUpdating = false;
@@ -933,6 +1084,7 @@ function updateControls() {
         }
     }, 100); // 300ms delay before heavy calculations
 }
+
 
 function initSolarDiagram() {
     scene = new THREE.Scene();
@@ -1100,6 +1252,7 @@ function updateLabel(name, text, position) {
 function updatePowerChart(hourlyPower) {
     const ctx = document.getElementById('powerChart').getContext('2d');
     const soilingRatio = parseFloat(document.getElementById('soiling').value);
+    const shading = parseFloat(document.getElementById('shading').value);
     const season = document.getElementById('season').value;
     const isNorthernHemisphere = parseFloat(document.getElementById('location').value.split(',')[0]) > 0;
     
@@ -1108,18 +1261,22 @@ function updatePowerChart(hourlyPower) {
         (season === 'summer' ? 'June 21' : 'December 21') :
         (season === 'summer' ? 'December 21' : 'June 21');
 
-    // Ensure hourlyPower is an array with 24 elements
     const powerWithoutSoiling = Array.isArray(hourlyPower) && hourlyPower.length === 24
         ? hourlyPower
         : Array(24).fill(0);
 
+    // Apply soiling factor
     const powerWithSoiling = powerWithoutSoiling.map(value => value * (1 - soilingRatio));
-    const powerWithShading = powerWithoutSoiling.map(value => value * shadingFactor);
 
+    // Apply non-linear shading
+    const powerWithShading = powerWithoutSoiling.map(value => value * calculateShadingFactor(shading));
+
+    // If there's already a chart, destroy it before creating a new one
     if (powerChart) {
         powerChart.destroy();
     }
 
+    // Create new chart with updated data
     powerChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1129,66 +1286,94 @@ function updatePowerChart(hourlyPower) {
                     label: 'Power Without Soiling (W)',
                     data: powerWithoutSoiling,
                     borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1,
-                    fill: false,
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
                 },
                 {
                     label: 'Power With Soiling (W)',
                     data: powerWithSoiling,
                     borderColor: 'rgb(255, 99, 132)',
-                    tension: 0.1,
-                    fill: false,
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
                 },
                 {
                     label: 'Power With Shading (W)',
                     data: powerWithShading,
                     borderColor: 'rgb(255, 165, 0)',
-                    tension: 0.1,
-                    fill: false,
+                    backgroundColor: 'rgba(255, 165, 0, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
                 }
             ],
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 y: {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Power (W)'
+                        text: 'Power (W)',
+                        color: '#ffffff'
                     },
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.2)',
+                        color: 'rgba(255, 255, 255, 0.1)',
                     },
+                    ticks: {
+                        color: '#ffffff'
+                    }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Hour of the Day'
+                        text: 'Hour of the Day',
+                        color: '#ffffff'
                     },
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.2)',
+                        color: 'rgba(255, 255, 255, 0.1)',
                     },
+                    ticks: {
+                        color: '#ffffff'
+                    }
                 },
             },
             plugins: {
                 legend: {
                     display: true,
                     position: 'top',
+                    labels: {
+                        color: '#ffffff',
+                        padding: 20,
+                        font: {
+                            size: 12
+                        }
+                    }
                 },
                 tooltip: {
                     mode: 'index',
                     intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
                 },
                 title: {
                     display: true,
-                    text: `${hemisphere} Hemisphere - ${season.charAt(0).toUpperCase() + season.slice(1)} Solstice (${seasonDate})`
+                    text: `${hemisphere} Hemisphere - ${season.charAt(0).toUpperCase() + season.slice(1)} Solstice (${seasonDate})`,
+                    color: '#ffffff',
+                    font: {
+                        size: 14
+                    }
                 }
             },
         },
     });
 }
-
 
 function updateMonthlyPowerChart(monthlyAveragePower) {
     const ctx = document.getElementById('monthlyPowerChart').getContext('2d');
@@ -1207,38 +1392,58 @@ function updateMonthlyPowerChart(monthlyAveragePower) {
                 data: monthlyAveragePower.map(d => d.power.toFixed(2)),
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
                 borderColor: 'rgb(75, 192, 192)',
-                borderWidth: 1
+                borderWidth: 1,
+                borderRadius: 4,
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 y: {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Average Daily Power (kWh/day)'
+                        text: 'Average Daily Power (kWh/day)',
+                        color: '#ffffff'
                     },
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.2)',
+                        color: 'rgba(255, 255, 255, 0.1)',
                     },
+                    ticks: {
+                        color: '#ffffff'
+                    }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Month'
+                        text: 'Month',
+                        color: '#ffffff'
                     },
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.2)',
+                        color: 'rgba(255, 255, 255, 0.1)',
                     },
+                    ticks: {
+                        color: '#ffffff'
+                    }
                 },
             },
             plugins: {
                 legend: {
-                    display: true,
+                    display: false,
                     position: 'top',
+                    labels: {
+                        color: '#ffffff',
+                        padding: 20,
+                        font: {
+                            size: 12
+                        }
+                    }
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
                     callbacks: {
                         label: function(context) {
                             return `${context.parsed.y} kWh/day`;
