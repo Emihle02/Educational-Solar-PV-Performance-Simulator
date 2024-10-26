@@ -121,9 +121,10 @@ h1 {
     .controls, #solar-diagram,
     #pv-module, .output-power,
     .card.financial-aspect {
-        height: 100px;
+        height: 250px;
     }
 }
+
 
 @media (max-width: 768px) {
     .dashboard {
@@ -132,7 +133,7 @@ h1 {
     }
 
     .card {
-        height: 100px !important;
+        height: 250px !important;
     }
 }
 
