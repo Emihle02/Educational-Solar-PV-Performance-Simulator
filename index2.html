@@ -10,19 +10,19 @@
 </head>
 
 <body>
-    <h1>Solar Panel Simulator</h1>
     <div class="dashboard">
         <!-- First Row -->
         <div class="card" id="map">
             <h2>Map</h2>
+            <input type="text" id="location" placeholder="Enter coordinates (lat)" />
             <div id="map-container"></div>
         </div>
         <div class="card">
-            <h2>Location Settings</h2>
-            <input type="text" id="location" placeholder="Enter coordinates (lat, lng)" />
-            <button id="applyLocation">Apply</button>
-            <p>Optimum Tilt Angle: <span id="optimumAngle">--</span>°</p>
-            <p>Peak Generated Power of 1kW Panel: <span id="peakPower">--</span> W</p>
+            <h2>Peak Power Generation</h2>
+            <p> Power Output of 1kWp Panel: <span id="peakPower">--</span> W</p>
+            <p> Power Output of 1kWp Panel with soiling: <span id="peakPower">--</span> W</p>
+            <p> Power Output of 1kWp Panel with shading: <span id="peakPower">--</span> W</p>
+
         </div>
 
         <div class="card controls">
@@ -36,15 +36,23 @@
             <label for="soiling"><span class="tooltip" data-tooltip="This value represents how dirty the panel's surface is, affecting its efficiency. A value of 0 means the panel is completely clean, while 1 means it's fully covered with dirt or dust, reducing power output.">Soiling Ratio:</span>
                 <span id="soilingValue">0</span></label>
             <input type="range" id="soiling" min="0" max="1" step="0.01" value="0" oninput="updateControls()" />
-            <label for="soiling"><span class="tooltip" data-tooltip="This is the percentage of the solar panel's surface blocked by external objects like trees or buildings. A value of 0% means no shading, while 100% means the entire panel is in shadow, drastically reducing power output.">Linear Shading:</span>
+            <label for="soiling"><span class="tooltip" data-tooltip="This is the percentage of the solar panel's surface blocked by external objects like trees or buildings. A value of 0% means no shading, while 100% means the entire panel is in shadow, drastically reducing power output."> Shading:</span>
                 <span id="shadingValue">0</span></label>
             <input type="range" id="shading" min="0" max="100" step="1" value="0" oninput="updateControls()" />
         </div>
 
         <div class="card">
             <h2>PV Module Orientation</h2>
+            <p>
+                <span class="tooltip" data-tooltip="This angle provides the best energy output based on your location and season.">
+                    Optimum Tilt Angle:
+                </span>
+                <span id="optimumAngle">--</span>°
+            </p>
             <div id="solar-diagram"></div>
         </div>
+        
+        
 
         
 
@@ -60,16 +68,16 @@
         </div>
 
         <div class="card output-power">
-            <h2>Monthly Power Output</h2>
+            <h2>Monthly Energy Output</h2>
             <canvas id="monthlyPowerChart"></canvas>
         </div>
 
         <div class="card financial-aspect">
             <h2>PV System Sizing Calculator</h2>
-    <label for="house-type">Select House Type:</label>
+    <label for="house-type">Select House Size:</label>
     <select id="house-type">
-        <option value="urban">Urban</option>
-        <option value="rural">Rural</option>
+        <option value="urban">Large</option>
+        <option value="rural">Small</option>
     </select>
     <button id="calculate-button">Calculate</button>
 

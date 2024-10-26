@@ -27,14 +27,14 @@ function calculateSystemRequirements(solarData, houseType) {
         dailyGHI += data.ghi;
         hourlyValues.push(data.ghi);
     }
-
+    
     // Calculate PSH
     // PSH is the number of hours per day when solar irradiance averages 1000 W/m²
     // So we take the total daily irradiance (in Wh/m²) and divide by 1000 W/m²
     const peakSunHours = dailyGHI / 1000;
-
     console.log('Peak Sun Hours:', peakSunHours);
 
+    
     // Calculate system sizes and panel counts for both grid and off-grid
     const gridCalculations = calculateSystemSize(DAILY_CONSUMPTION, PANEL_RATING, peakSunHours, GRID_EFFICIENCY);
     const offGridCalculations = calculateSystemSize(DAILY_CONSUMPTION, PANEL_RATING, peakSunHours, OFF_GRID_EFFICIENCY);
@@ -585,14 +585,21 @@ function calculatheourlyPeakPower(solarData, tilt, azimuth, lat, lng) {
         const data = JSON.parse(solarData[timestamp]);
 
         const GHI = data.ghi;
+        //console.log("GHI:", GHI);
+
         const DHI = data.dhi;
+        //console.log("DHI:", DHI);
+
         const DNI = data.dni;
+        //console.log("DNI:", DNI);
         const SZA = data.zen;
         const SAA = data.azm;
+        //the solar irradiance is in Wh/m^2
 
         // Calculate angle of incidence (θ)
         const theta = calculateAngleOfIncidence(tilt, azimuth, SZA, SAA);
-        const power = calculatePower(theta, GHI, DHI, DNI, tilt); // Raw power calculation
+        const power = calculatePower(theta, GHI, DHI, DNI, tilt); // Raw power calculation, returns Wh
+        //console.log("Hourly Power:", power);
 
         // Adjust power for shading using the new non-linear shading factor
         const shading = parseFloat(document.getElementById('shading').value);
@@ -615,7 +622,7 @@ function calculatheourlyPeakPower(solarData, tilt, azimuth, lat, lng) {
 function calculatePower(theta,GHI,DHI,DNI,tilt){
     const panelArea = 4; // Updated area for a 1kW solar panel in m^2
     const panelEfficiency = 0.16; // Typical efficiency of a solar panel (20%)
-
+    
     // Calculate beam irradiance on tilted surface (Gb)
     const Gb = DNI * Math.cos(theta * Math.PI / 180);
 
@@ -700,34 +707,46 @@ function generate_solar_data(vip_daily_data, zenith_angle, azimuth_angle){
 }
 
 function calculateMonthlyAverages(solarData, tilt, azimuth, lat) {
+    // Initialize arrays to store monthly totals and counts
     const monthlyPower = Array(12).fill(0);
     const monthlyDays = Array(12).fill(0);
 
+    // Process each timestamp in the solar data
     for (const timestamp in solarData) {
-        const data = JSON.parse(solarData[timestamp]);
-        const date = get_correct_dateTime_format(timestamp);
-        const month = date.getMonth();
+        try {
+            const data = JSON.parse(solarData[timestamp]);
+            const date = get_correct_dateTime_format(timestamp);
+            const month = date.getMonth();
 
-        const GHI = data.ghi;
-        const DHI = data.dhi;
-        const DNI = data.dni;
+            // Validate required irradiance data
+            if (typeof data.ghi !== 'number' || typeof data.dhi !== 'number' || typeof data.dni !== 'number') {
+                continue;
+            }
 
-        const solarDeclination = solar_declination(date.getDate());
-        const hourAngle = 0; // Use noon as reference point for daily calculation
-        const theta = calculateAngleOfIncidence(tilt, azimuth, solarDeclination, hourAngle, lat);
+            // Calculate solar position and angle of incidence
+            const solarDeclination = solar_declination(date.getDate());
+            const hourAngle = 0; // Solar noon reference
+            const theta = calculateAngleOfIncidence(tilt, azimuth, solarDeclination, hourAngle, lat);
 
-        const dailyPower = calculatePower(theta, GHI, DHI, DNI, tilt) * 24; // Daily energy in Wh
-        
-        monthlyPower[month] += dailyPower / 1000; // Convert to kWh
-        monthlyDays[month]++;
+            // Calculate daily power output
+            const dailyPower = calculatePower(theta, data.ghi, data.dhi, data.dni, tilt);
+
+            // Accumulate monthly totals
+            if (dailyPower > 0) {
+                monthlyPower[month] += dailyPower;
+                monthlyDays[month]++;
+            }
+        } catch (error) {
+            console.warn(`Error processing data for timestamp ${timestamp}`);
+            continue;
+        }
     }
 
-    const monthlyAveragePower = monthlyPower.map((power, index) => ({
-        month: index,
-        power: power / monthlyDays[index] // Average daily power for the month
+    // Calculate and return monthly averages in the format expected by the chart
+    return monthlyPower.map((power, month) => ({
+        month: month,
+        power: monthlyDays[month] > 0 ? power / monthlyDays[month] : 0
     }));
-
-    return monthlyAveragePower;
 }
 
 /**
@@ -760,131 +779,133 @@ function createSunPathDiagram(lat, lng) {
 
     // Clear and set background
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = '#f0f8ff';
     ctx.fillRect(0, 0, width, height);
 
     // Draw grid
-    ctx.strokeStyle = '#eee';
+    ctx.strokeStyle = '#ddd';
     ctx.lineWidth = 0.5;
-    for (let i = 0; i <= width; i += width / 18) {
+    for (let i = 0; i <= width; i += width / 24) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
         ctx.lineTo(i, height);
         ctx.stroke();
     }
-    for (let i = 0; i <= height; i += height / 9) {
+    for (let i = 0; i <= height; i += height / 6) {
         ctx.beginPath();
         ctx.moveTo(0, i);
         ctx.lineTo(width, i);
         ctx.stroke();
     }
 
-    // Draw axes
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 1;
+    // Draw horizon line
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, height);
     ctx.lineTo(width, height);
     ctx.stroke();
 
-    // Label axes with hemisphere-specific cardinal directions
+    // Add cardinal directions
     ctx.fillStyle = 'black';
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('Horizon', 40, height - 5);
-    ctx.fillText('Zenith', 40, 15);
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    
+    // Display E-S/N-W with S for Southern Hemisphere and N for Northern Hemisphere
+    ctx.fillText('E', width * 0.15, height - 10);
+    ctx.fillText(isNorthernHemisphere ? 'N' : 'S', width * 0.5, height - 10);
+    ctx.fillText('W', width * 0.85, height - 10);
 
-    if (isNorthernHemisphere) {
-        // Northern hemisphere: S in middle
-        ctx.fillText('E', width * 0.25, height - 20);
-        ctx.fillText('S', width * 0.5, height - 20);
-        ctx.fillText('W', width * 0.75, height - 20);
-        ctx.fillText('N', width - 20, height - 20);
-    } else {
-        // Southern hemisphere: N in middle
-        ctx.fillText('E', width * 0.25, height - 20);
-        ctx.fillText('N', width * 0.5, height - 20);
-        ctx.fillText('W', width * 0.75, height - 20);
-        ctx.fillText('S', width - 20, height - 20);
-    }
+    // Add labels
+    ctx.textAlign = 'left';
+    ctx.fillText('Horizon', 10, height - 10);
+    ctx.fillText('Zenith (90°)', 10, 20);
+    ctx.fillText('45°', 10, height / 2);
 
     // Calculate sun positions
     const year = new Date().getFullYear();
-    let days, legends;
+    const days = [
+        new Date(year, 11, 21), // Winter solstice
+        new Date(year, 2, 20),  // Spring equinox
+        new Date(year, 5, 21)   // Summer solstice
+    ];
     
-    if (isNorthernHemisphere) {
-        days = [
-            new Date(year, 11, 21), // Winter solstice
-            new Date(year, 2, 20),  // Spring equinox
-            new Date(year, 5, 21),  // Summer solstice
-        ];
-        legends = ['Winter', 'Spring/Autumn', 'Summer'];
-    } else {
-        days = [
-            new Date(year, 5, 21),  // Winter solstice
-            new Date(year, 2, 20),  // Spring equinox
-            new Date(year, 11, 21), // Summer solstice
-        ];
-        legends = ['Winter', 'Spring/Autumn', 'Summer'];
+    if (!isNorthernHemisphere) {
+        days.reverse(); // Reverse seasons for Southern hemisphere
     }
 
-    const colors = ['blue', 'green', 'red'];
+    const pathColors = ['#0066cc', '#009933', '#cc3300'];
+    const seasonLabels = isNorthernHemisphere ? 
+        ['Winter', 'Spring/Fall', 'Summer'] :
+        ['Summer', 'Spring/Fall', 'Winter'];  // Updated season labels for Southern Hemisphere
 
+    // Rest of the code remains the same...
     // Draw paths for each season
     days.forEach((day, index) => {
         const sunPositions = [];
         
-        // Calculate positions with smaller time intervals for smoother curves
-        for (let hour = 0; hour < 24; hour += 0.25) { // Using 15-minute intervals
-            const date = new Date(day.getTime());
-            date.setHours(Math.floor(hour), (hour % 1) * 60, 0);
-            const sunPosition = SunCalc.getPosition(date, lat, lng);
+        for (let hour = 0; hour <= 24; hour += 0.25) {
+            const date = new Date(day);
+            date.setHours(hour, (hour % 1) * 60, 0);
+            const sunPos = SunCalc.getPosition(date, lat, lng);
             
-            if (sunPosition.altitude > 0) {
+            if (sunPos.altitude > 0) {
+                let azimuth = (sunPos.azimuth * 180 / Math.PI + 180) % 360;
+                const normalizedAzimuth = (azimuth + 180) % 360;
+                const x = width * 0.15 + (width * 0.7 * (normalizedAzimuth / 360));
+                const altitude = sunPos.altitude * 180 / Math.PI;
+                const normalizedAltitude = Math.sin((normalizedAzimuth * Math.PI) / 360) * altitude;
+                const y = height - (height * altitude / 90);
+                
                 sunPositions.push({
-                    azimuth: (sunPosition.azimuth * 180 / Math.PI + 180) % 360,
-                    altitude: sunPosition.altitude * 180 / Math.PI,
-                    hour: hour
+                    x: x,
+                    y: y,
+                    hour: hour,
+                    azimuth: azimuth,
+                    altitude: altitude
                 });
             }
         }
 
-        // Draw continuous path
-        ctx.strokeStyle = colors[index];
+        // Sort positions by x-coordinate for smooth path
+        sunPositions.sort((a, b) => a.x - b.x);
+
+        // Draw the path
+        ctx.strokeStyle = pathColors[index];
         ctx.lineWidth = 2;
         ctx.beginPath();
-        
         sunPositions.forEach((pos, i) => {
-            const x = (pos.azimuth / 360) * width;
-            const y = height - (pos.altitude / 90) * height;
-            
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
+            if (i === 0) ctx.moveTo(pos.x, pos.y);
+            else ctx.lineTo(pos.x, pos.y);
         });
         ctx.stroke();
 
         // Add hour markers and labels
         sunPositions.filter(pos => Math.floor(pos.hour) === pos.hour).forEach(pos => {
-            const x = (pos.azimuth / 360) * width;
-            const y = height - (pos.altitude / 90) * height;
-            
-            ctx.fillStyle = colors[index];
+            ctx.fillStyle = pathColors[index];
             ctx.beginPath();
-            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.arc(pos.x, pos.y, 4, 0, 2 * Math.PI);
             ctx.fill();
 
-            const hourFormatted = `${String(Math.floor(pos.hour)).padStart(2, '0')}`;
-            ctx.fillText(hourFormatted, x, y - 10);
+            if (pos.hour % 2 === 0) {
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                const timeLabel = `${String(Math.floor(pos.hour)).padStart(2, '0')}:00`;
+                ctx.fillText(timeLabel, pos.x, pos.y - 10);
+            }
         });
     });
 
     // Add legend
-    legends.forEach((text, i) => {
-        ctx.fillStyle = colors[i];
-        ctx.fillText(text, width - 100, 20 + i * 20);
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    seasonLabels.forEach((season, i) => {
+        ctx.fillStyle = pathColors[i];
+        const y = 30 + i * 20;
+        ctx.fillRect(width - 120, y - 10, 15, 15);
+        ctx.fillStyle = 'black';
+        ctx.fillText(season, width - 100, y);
     });
 }
 //the user inputs coordinates
@@ -914,37 +935,47 @@ function initializeLocationInput() {
 }
 
 
+// Add this CSS to your stylesheet or add it inline in your HTML
 function initMap() {
-    // johnny changed it : from -33.959168 to -33.1111111
-// Bangkok, Thailand (13.7563, 100.5018)d
-//Alice Springs, Australia(-23.6980, 133.8807)d
-//(30.0333, 31.2333)d
-//Paris, France (48.8566, 2.3522)d
-//Miami/Richmond, USA (25.6153, -80.4410)d
-//Ulaanbaatar/Ulan Bator, Mongolia(47.9167, 106.9172)d
-//Thessaloniki/Livadákion, Greece(40.6401, 22.9444)d
-//Mexico City, Mexico(19.4326, -99.1332)d
-//Helsinki/Alppikylä, Finland(60.1695, 24.9354)d
-//Sydney Harbour/ Georges Heights, Australia(-33.8395, 151.2573)
-//Kenya(-3.3961, 38.5562)
-//Abashiri, Japan (44.0207, 144.2733)
-//Abu Dhabi, UAE(24.4539, 54.3773)
-//Al Udeid, Qatar(25.1173, 51.3147)
-//Babao, China(42.3917, 127.6992)
     map = L.map('map').setView([-33.9344,18.8640], 9);
-
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
     }).addTo(map);
 
-    map.on('click', onMapClick);
+    // Create a div for coordinates
+    const coordsDiv = L.DomUtil.create('div', 'leaflet-control');
+    coordsDiv.style.backgroundColor = 'black';
+    coordsDiv.style.padding = '5px 10px';
+    coordsDiv.style.margin = '10px';
+    coordsDiv.style.border = '2px solid rgba(0,0,0,0.2)';
+    coordsDiv.style.borderRadius = '4px';
+    coordsDiv.style.fontSize = '14px';
+    coordsDiv.innerHTML = 'Latitude: -33.9344°';
 
+    // Create a control and add the div to it
+    const coordsControl = L.Control.extend({
+        options: {
+            position: 'bottomleft'
+        },
+        onAdd: function() {
+            return coordsDiv;
+        }
+    });
+
+    // Add control to map
+    new coordsControl().addTo(map);
+
+    // Update coordinates only on click
+    map.on('click', function(e) {
+        coordsDiv.innerHTML = `Latitude: ${e.latlng.lat.toFixed(4)}°`;
+    });
+
+    map.on('click', onMapClick);
     // Initial marker
     marker = L.marker([-33.9344,18.8640]).addTo(map);
     updateLocation(-33.9344,18.8640);
 }
-
-
 async function updateLocation(lat, lng) {
 
     document.getElementById('location').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
@@ -1059,7 +1090,7 @@ function updateControls() {
     // Update UI values immediately
     document.getElementById('azimuthValue').textContent = azimuth;
     document.getElementById('tiltValue').textContent = tilt;
-    document.getElementById('soilingValue').textContent = soiling + '%';
+    document.getElementById('soilingValue').textContent = soiling ;
     document.getElementById('shadingValue').textContent = shading + '%';
 
     // Update solar diagram
@@ -1220,7 +1251,7 @@ function updateSolarDiagram(tilt, azimuth) {
 
     // Convert degrees to radians
     const tiltRad = THREE.MathUtils.degToRad(tilt);
-    const azimuthRad = THREE.MathUtils.degToRad(azimuth);
+    const azimuthRad = THREE.MathUtils.degToRad(azimuth + 44);
 
     // Update panel rotation
     panel.rotation.set(0, 0, 0); // Reset rotation
@@ -1388,7 +1419,7 @@ function updateMonthlyPowerChart(monthlyAveragePower) {
         data: {
             labels: monthNames,
             datasets: [{
-                label: 'Average Daily Power Output (kWh/day)',
+                label: 'Average Daily Energy Output (kWh/day)',
                 data: monthlyAveragePower.map(d => d.power.toFixed(2)),
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
                 borderColor: 'rgb(75, 192, 192)',
@@ -1404,7 +1435,7 @@ function updateMonthlyPowerChart(monthlyAveragePower) {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Average Daily Power (kWh/day)',
+                        text: 'Average Daily Energy Output (kWh/day)',
                         color: '#ffffff'
                     },
                     grid: {

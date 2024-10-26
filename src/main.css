@@ -23,7 +23,7 @@ h1 {
     grid-template-rows: auto auto;
     gap: 20px;
     width: 100%;
-    max-width: 1600px;
+    max-width: 1300px;
     margin: 0 auto;
 }
 
@@ -41,7 +41,7 @@ h1 {
 .output-power,
 .card.financial-aspect {
     grid-row: 2;
-    height: 400px;
+    height: 350px;
 }
 
 /* Individual card styles */
@@ -157,7 +157,24 @@ canvas {
     width: 100% !important;
     height: calc(100% - 40px) !important;
 }
-
+.map-section {
+    height: 50%;  /* Takes up top half of the card */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);  /* Subtle divider */
+  }
+  
+  #map-container {
+    height: 100%;
+    width: 100%;
+  }
+  
+  .info-section {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);  /* Slightly different background to differentiate */
+  }
+  
+  .info-section input {
+    margin-bottom: 0.5rem;
+  }
 .tooltip {
     position: relative;
     cursor: help;
