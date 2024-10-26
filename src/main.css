@@ -23,7 +23,7 @@ h1 {
     grid-template-rows: auto auto;
     gap: 20px;
     width: 100%;
-    max-width: 1000px;
+    max-width: 500px;
     margin: 0 auto;
 }
 
@@ -33,7 +33,7 @@ h1 {
 .controls,
 #solar-diagram {
     grid-row: 1;
-    height: 350px;
+    height: 10px;
 }
 
 /* Second row cards */
@@ -41,7 +41,7 @@ h1 {
 .output-power,
 .card.financial-aspect {
     grid-row: 2;
-    height: 350px;
+    height: 100px;
 }
 
 /* Individual card styles */
