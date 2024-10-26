@@ -33,7 +33,7 @@ h1 {
 .controls,
 #solar-diagram {
     grid-row: 1;
-    height: 10px;
+    height: 100px;
 }
 
 /* Second row cards */
@@ -121,7 +121,7 @@ h1 {
     .controls, #solar-diagram,
     #pv-module, .output-power,
     .card.financial-aspect {
-        height: 350px;
+        height: 100px;
     }
 }
 
@@ -132,7 +132,7 @@ h1 {
     }
 
     .card {
-        height: 300px !important;
+        height: 100px !important;
     }
 }
 
