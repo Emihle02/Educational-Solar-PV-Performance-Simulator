@@ -41,7 +41,7 @@ h1 {
 .output-power,
 .card.financial-aspect {
     grid-row: 2;
-    height: 450px;
+    height: 400px;
 }
 
 /* Individual card styles */
@@ -121,7 +121,7 @@ h1 {
     .controls, #solar-diagram,
     #pv-module, .output-power,
     .card.financial-aspect {
-        height: 350px;
+        height: 300px;
     }
 }
 
@@ -132,7 +132,7 @@ h1 {
     }
 
     .card {
-        height: 350px !important;
+        height: 300px !important;
     }
 }
 
