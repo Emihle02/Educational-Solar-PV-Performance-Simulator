@@ -23,7 +23,10 @@ h1 {
     grid-template-rows: auto auto;
     gap: 20px;
     width: 100%;
-    max-width: 1300px;
+
+    /*changing the width here so it's more visible*/
+
+    max-width: 1800px;
     margin: 0 auto;
 }
 
@@ -94,6 +97,7 @@ h1 {
 #pv-module { grid-column: 1; }
 .output-power:nth-of-type(1) { grid-column: 2; }
 .output-power:nth-of-type(2) { grid-column: 3; }
+
 
 /* Component-specific styles */
 .controls input {
@@ -210,3 +214,8 @@ canvas {
         padding: 6px 10px;
     }
 }
+#pv-module {
+    grid-column: 1 / span 2;  /* Makes Sun Path Diagram wider */
+}
+
+

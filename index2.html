@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar Panel Web</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" type="text/css" href="src/main.css" />
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- First Row -->
+        <div class="card" id="map">
+            <h2>Map</h2>
+            <input type="text" id="location" placeholder="Enter coordinates (lat)" />
+            <div id="map-container"></div>
+        </div>
+        
+
+
+        <div class="card controls">
+            <h2>Controls</h2>
+            <label for="azimuth"><span class="tooltip" data-tooltip="The angle your solar panel faces, measured clockwise in degrees from true north (0°).">Surface Azimuth Angle:</span>
+                <span id="azimuthValue">0</span>°</label>
+            <input type="range" id="azimuth" min="0" max="360" value="0" oninput="updateControls()" />
+            <label for="tilt"><span class="tooltip" data-tooltip="This angle the solar panel is tilted from the horizontal plane.">Tilt Angle:</span>
+                <span id="tiltValue">0</span>°</label>
+            <input type="range" id="tilt" min="0" max="90" value="0" oninput="updateControls()" />
+            <label for="soiling"><span class="tooltip" data-tooltip="This value represents how dirty the panel's surface is, affecting its efficiency. A value of 0 means the panel is completely clean, while 1 means it's fully covered with dirt or dust, reducing power output.">Soiling Ratio:</span>
+                <span id="soilingValue">0</span></label>
+            <input type="range" id="soiling" min="0" max="1" step="0.01" value="0" oninput="updateControls()" />
+            <label for="soiling"><span class="tooltip" data-tooltip="This is the percentage of the solar panel's surface blocked by external objects like trees or buildings. A value of 0% means no shading, while 100% means the entire panel is in shadow, drastically reducing power output."> Shading:</span>
+                <span id="shadingValue">0</span></label>
+            <input type="range" id="shading" min="0" max="100" step="1" value="0" oninput="updateControls()" />
+            <h2>Peak Power Generation</h2>
+            <p>Power Output of 1kWp Panel: <span id="peakPower">--</span> W</p>
+            <p>Power Output of 1kWp Panel with Soiling and Shading: <span id="combinedPower">--</span> W</p>
+
+        </div>
+
+        <div class="card">
+            <h2>PV Module Orientation</h2>
+            <p>
+                <span class="tooltip" data-tooltip="This angle provides the best energy output based on your location and season.">
+                    Optimum Tilt Angle:
+                </span>
+                <span id="optimumAngle">--</span>°
+            </p>
+            <div id="solar-diagram"></div>
+        </div>
+        
+        <div class="card financial-aspect">
+            <h2>PV System Sizing Calculator</h2>
+    <label for="house-type">Select House Size:</label>
+    <select id="house-type">
+        <option value="urban">Large</option>
+        <option value="rural">Small</option>
+    </select>
+    <button id="calculate-button">Calculate</button>
+
+    <div>
+        <p>Daily Consumption: <span id="daily-consumption"></span></p>
+        <p>Annual Consumption: <span id="annual-consumption"></span></p>
+        <p>PV Grid Size: <span id="pv-grid-size"></span></p>
+        <p>PV Off-Grid Size: <span id="pv-off-grid-size"></span></p>
+        <p>Panel Count (Grid): <span id="panel-count-grid"></span></p>
+        <p>Panel Count (Off-Grid): <span id="panel-count-off-grid"></span></p>
+    </div>
+            </div>
+
+        
+
+        <!-- Second Row -->
+        <div class="card" id="pv-module">
+            <h2>Sun Path Diagram</h2>
+            <canvas id="sunPathDiagram" width="800" height="600"></canvas>
+        </div>
+
+        <div class="card output-power">
+            <h2>Hourly Power Output</h2>
+            <canvas id="powerChart"></canvas>
+        </div>
+
+        <div class="card output-power">
+            <h2>Monthly Energy Output</h2>
+            <canvas id="monthlyPowerChart"></canvas>
+        </div>
+
+        
+        </div>
+    </div>
+
+    <!-- The js  -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script> console.log("Three.js version:", THREE.REVISION);</script>
+    <script src="src/main.js"></script>
+</body>
+
+</html>

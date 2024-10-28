@@ -917,7 +917,7 @@ function createSunPathDiagram(lat, lng) {
 
         // Draw the path
         ctx.strokeStyle = pathColors[index];
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         
         sunPositions.forEach((pos, i) => {
@@ -936,7 +936,7 @@ function createSunPathDiagram(lat, lng) {
             
             // Add time label for all paths
             ctx.fillStyle = 'black';
-            ctx.font = '12px Arial';
+            ctx.font = '13px Arial';
             ctx.textAlign = 'center';
             const timeLabel = `${String(Math.floor(pos.hour)).padStart(2, '0')}:00`;
             const labelOffset = -10;
