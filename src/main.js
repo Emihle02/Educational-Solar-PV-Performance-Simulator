@@ -1107,23 +1107,32 @@ async function updateLocation(lat, lng) {
  * @param {Number} maxPower the maximum power of the location
  * @param {boolean} shading if set true, we will run the shadingFactor method, else we will run the soiling factor calculation
  */
-function maxPowerWithParameters(maxPower, shading){
-    const documentToChange = (shading) ? "shadingPower" : "soilingPower";
-    const documentToRead = (shading) ? "shading" : "soiling";
+function maxPowerWithParameters(maxPower) {
+    // Get both soiling and shading values
+    const soilingValue = parseFloat(document.getElementById("soiling").value) || 0;
+    const shadingValue = parseFloat(document.getElementById("shading").value) || 0;
 
-    const documentValue = document.getElementById(documentToRead).value;
-    const value = parseFloat(documentValue);
-
-    if (value > 0) {
-        // (true) ? shading calc : (false) soiling calc
-        let power = (shading) ? maxPower * calculateShadingFactor(value) : maxPower * (1 - value);
-
-        power = (power < 0) ? 0.00.toFixed(2) : power.toFixed(2);
-
-        document.getElementById(documentToChange).innerHTML = power
-    } else{
-        document.getElementById(documentToChange).innerHTML = maxPower.toFixed(2);
+    // Calculate combined power output
+    let power = maxPower;
+    
+    if (soilingValue > 0 || shadingValue > 0) {
+        // Apply soiling reduction
+        power *= (1 - soilingValue);
+        
+        // Apply shading reduction
+        if (shadingValue > 0) {
+            power *= calculateShadingFactor(shadingValue);
+        }
+        
+        // Ensure power doesn't go negative
+        power = Math.max(0, power);
     }
+    
+    // Format to 2 decimal places
+    power = power.toFixed(2);
+    
+    // Update the display
+    document.getElementById("combinedPower").innerHTML = power;
 }
 
 

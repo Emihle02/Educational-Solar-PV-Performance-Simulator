@@ -29,17 +29,16 @@ h1 {
 
 /* First row cards */
 #map,
-.card:nth-child(2),
 .controls,
-#solar-diagram {
+.card:nth-child(3),
+.card.financial-aspect {
     grid-row: 1;
-    height: 300px;
+    height: 400px;
 }
 
 /* Second row cards */
 #pv-module,
-.output-power,
-.card.financial-aspect {
+.output-power {
     grid-row: 2;
     height: 350px;
 }
@@ -54,9 +53,8 @@ h1 {
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
-    position: relative; /* Add this */
-  }
-  
+    position: relative;
+}
 
 .card:hover {
     transform: translateY(-5px);
@@ -70,71 +68,32 @@ h1 {
     text-align: center;
 }
 
-/* Specific card adjustments */
-#map {
-    grid-column: 1;
+/* Peak Power Info styles */
+.peak-power-info {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.card:nth-child(2) {
+.peak-power-info h3 {
+    font-size: 1em;
+    margin-bottom: 10px;
+    color: #ffffff;
+}
+
+/* Specific card positioning */
+#map { grid-column: 1; }
+.controls { 
     grid-column: 2;
+    height: auto !important;
+    min-height: 300px;
 }
+.card:nth-child(3) { grid-column: 3; } /* PV Module Orientation */
+.financial-aspect { grid-column: 4; }
 
-.controls {
-    grid-column: 3;
-}
-
-#solar-diagram {
-    grid-column: 4;
-}
-
-#pv-module {
-    grid-column: 1;
-}
-
-.output-power:nth-of-type(1) {
-    grid-column: 2;
-}
-
-.output-power:nth-of-type(2) {
-    grid-column: 3;
-}
-
-.card.financial-aspect {
-    grid-column: 4;
-    background: linear-gradient(to bottom right, #13072e, #3f2182);
-    max-width: none;
-    margin: 0;
-}
-
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-    .dashboard {
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(4, auto);
-    }
-
-    .card {
-        grid-column: span 1 !important;
-    }
-
-    #map, .card:nth-child(2),
-    .controls, #solar-diagram,
-    #pv-module, .output-power,
-    .card.financial-aspect {
-        height: 250px;
-    }
-}
-
-@media (max-width: 768px) {
-    .dashboard {
-        grid-template-columns: 1fr;
-        padding: 10px;
-    }
-
-    .card {
-        height: 250px !important;
-    }
-}
+#pv-module { grid-column: 1; }
+.output-power:nth-of-type(1) { grid-column: 2; }
+.output-power:nth-of-type(2) { grid-column: 3; }
 
 /* Component-specific styles */
 .controls input {
@@ -157,35 +116,38 @@ canvas {
     width: 100% !important;
     height: calc(100% - 40px) !important;
 }
+
 .map-section {
     height: 50%;  /* Takes up top half of the card */
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);  /* Subtle divider */
-  }
-  
-  #map-container {
+}
+
+#map-container {
     height: 100%;
     width: 100%;
-  }
-  
-  .info-section {
+}
+
+.info-section {
     padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);  /* Slightly different background to differentiate */
-  }
-  
-  .info-section input {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.info-section input {
     margin-bottom: 0.5rem;
-  }
+}
+
+/* Tooltip styles */
 .tooltip {
     position: relative;
     cursor: help;
     border-bottom: 1px dotted #fff;
-    display: inline-block; /* Add this */
-  }
-  
-  .tooltip::after {
+    display: inline-block;
+}
+
+.tooltip::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 100%; /* Changed from 120% */
+    bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
     background-color: rgba(51, 51, 51, 0.95);
@@ -193,30 +155,58 @@ canvas {
     padding: 8px 12px;
     border-radius: 5px;
     font-size: 12px;
-    white-space: normal; /* Changed from nowrap */
-    max-width: 250px; /* Add maximum width */
-    width: max-content; /* Add this */
+    white-space: normal;
+    max-width: 250px;
+    width: max-content;
     opacity: 0;
-    visibility: hidden; /* Add this */
+    visibility: hidden;
     pointer-events: none;
     transition: opacity 0.3s ease, visibility 0.3s ease;
     z-index: 1000;
-    margin-bottom: 8px; /* Add some space between tooltip and text */
+    margin-bottom: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-  
-  /* Show the tooltip */
-  .tooltip:hover::after {
+}
+
+.tooltip:hover::after {
     opacity: 1;
     visibility: visible;
-  }
-  
-  /* Add responsive adjustments */
-  @media (max-width: 768px) {
-    .tooltip::after {
-      max-width: 200px;
-      font-size: 11px;
-      padding: 6px 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .dashboard {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, auto);
     }
-  }
-  
+
+    .card {
+        grid-column: span 1 !important;
+    }
+
+    #map,
+    .controls,
+    .card:nth-child(3),
+    .financial-aspect,
+    #pv-module,
+    .output-power {
+        height: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+        padding: 10px;
+    }
+
+    .card {
+        height: auto !important;
+        min-height: 250px;
+    }
+
+    .tooltip::after {
+        max-width: 200px;
+        font-size: 11px;
+        padding: 6px 10px;
+    }
+}
