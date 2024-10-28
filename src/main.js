@@ -6,6 +6,9 @@ let scene, camera, renderer, circle, panel, tiltIndicator, azimuthIndicator;
 let monthlyPowerChart;
 //let shadingFactor = 1; // No shading by default
 
+// default soiling and shading values
+document.getElementById("shading").value = 25;
+document.getElementById("soiling").value = 0.25;
 
 function calculateSystemRequirements(solarData, houseType) {
     // Constants
@@ -236,17 +239,7 @@ function updateAzimuth(latitude) {
 }
 
 //seasonal change selection
-function addSeasonControl() {
-    const controlsDiv = document.querySelector('.card.controls');
-    const seasonControl = `
-        <label for="season"><span class="tooltip" data-tooltip="Select the season to see the affect on the power output.">Season:</label>
-        <select id="season" onchange="updateControls()">
-            <option value="summer">Summer Day</option>
-            <option value="winter">Winter Day</option>
-        </select>
-    `;
-    controlsDiv.insertAdjacentHTML('beforeend', seasonControl);
-}
+
 
 /**
  * Gets the hourly solar data that is needed to calculate the peak power of a given location
@@ -256,32 +249,26 @@ function addSeasonControl() {
  */
 async function getHourlySolarData(lat, lng) {
     const isNorthernHemisphere = lat > 0;
-    const season = document.getElementById('season').value;
-    
+
     // Define solstice dates based on hemisphere
     const solsticeDates = {
-        northern: {
-            summer: "0621", // June 21
-            winter: "1221"  // December 21
-        },
-        southern: {
-            summer: "1221", // December 21
-            winter: "0621"  // June 21
-        }
+        northern: "0621", // June 21
+        southern: "1221"  // December 21
     };
 
-    // Select the appropriate dates based on hemisphere
+    // Select the summer solstice date based on hemisphere
     const hemisphere = isNorthernHemisphere ? 'northern' : 'southern';
-    const date = solsticeDates[hemisphere][season];
+    const date = solsticeDates[hemisphere];
     
-    // Use the year 2023 for consistency
+    // Use a consistent year (e.g., 2023)
     const year = "2023";
     const fullDate = `${year}${date}`;
     
     const nasa_url = getApiUrl(fullDate, fullDate, lat, lng, "hourly");
-    
+
     try {
         const solar_data = await retrieveSolarData(nasa_url, lat, lng);
+        console.log(solar_data);
         return solar_data;
     } catch (error) {
         console.error('Error fetching solar data:', error);
@@ -289,6 +276,80 @@ async function getHourlySolarData(lat, lng) {
     }
 }
 
+
+async function getDecemberHourlyAvgPower(lat, lng){
+    getApiUrl("20231201","20231231",lat,lng,"Hourly")
+    // pass
+}
+
+async function getJuneHourlyAvgPower(params) {
+    // pass
+}
+
+/**
+ * @param {array} solarData an array of the solar data. The data contains all the data of a
+ * given time period.
+ * @param {int,float,} tilt the tile angle of the sun
+ * @param {int,float} azimuth the solar azimuth angle
+ * @param {boolean} june true of false, if we say true the hourly data gets devided by 30
+ */
+function calculateAvgPower(solarData,tilt, azimuth,june){
+    const hourlyPower = new Array(24).fill(0);
+
+    for (const timestamp in solarData) {
+        const data = JSON.parse(solarData[timestamp]);
+
+        const GHI = data.ghi;
+        //console.log("GHI:", GHI);
+
+        const DHI = data.dhi;
+        //console.log("DHI:", DHI);
+
+        const DNI = data.dni;
+        //console.log("DNI:", DNI);
+        const SZA = data.zen;
+        const SAA = data.azm;
+        //the solar irradiance is in Wh/m^2
+
+        // Calculate angle of incidence (θ)
+        const theta = calculateAngleOfIncidence(tilt, azimuth, SZA, SAA);
+        const power = calculatePower(theta, GHI, DHI, DNI, tilt); // Raw power calculation, returns Wh
+        //console.log("Hourly Power:", power);
+
+        // Update the hourly and maximum power values
+        const hour = get_correct_dateTime_format(timestamp).getHours();
+        hourlyPower[hour] = hourlyPower[hour] + power;
+    }
+    divisor = june ? 30 : 31;
+    for (const index in hourlyPower){
+        // const index = hourlyPower.indexOf(Number(sumOfPowers));
+        hourlyPower[index] = hourlyPower[index] / divisor; // this will give us the avg power per hour in a span of 30/31 days
+    }
+
+    return hourlyPower;
+    // return { maxPower, hourlyPower };
+};
+
+async function getJuneAndDecemberHourlyAvgPower(tilt, azimuth, lat, lng) { // this is cape town
+    const decemberDataUrl = getApiUrl("20231201","20231231",lat,lng,"hourly");
+    const juneDataUrl = getApiUrl("20230601","20230630",lat, lng,"hourly");
+
+    try{
+        const decemberData = await retrieveSolarData(decemberDataUrl,lat,lng);
+        const juneData = await retrieveSolarData(juneDataUrl, lat, lng);
+
+        const june = calculateAvgPower(juneData, tilt, azimuth,true);
+        console.log("june avg", june)
+        const december = calculateAvgPower(decemberData, tilt, azimuth, false);
+        console.log("dec avg", december)
+
+        return {june,december}; // the avg hourly power
+
+    }catch( error){
+        console.log("Either December or June Broke")
+        return null;
+    }
+};
 
 /**
  * returns a unique api for us to use for our get request
@@ -351,6 +412,7 @@ function retrieve_vips(api_data){
         console.log("Something is wrong");
     }
 
+    console.log("Inside the vip",vips)
     return vips;
 }
 
@@ -602,16 +664,17 @@ function calculatheourlyPeakPower(solarData, tilt, azimuth, lat, lng) {
         //console.log("Hourly Power:", power);
 
         // Adjust power for shading using the new non-linear shading factor
-        const shading = parseFloat(document.getElementById('shading').value);
-        const shadingFactor = calculateShadingFactor(shading); // New shading factor
-        const powerWithShading = power * shadingFactor;
+        // const shading = parseFloat(document.getElementById('shading').value);
+        // const shadingFactor = calculateShadingFactor(shading); // New shading factor
+        // const powerWithShading = power * shadingFactor;
 
         // Update the hourly and maximum power values
         const hour = get_correct_dateTime_format(timestamp).getHours();
-        hourlyPower[hour] = Math.max(hourlyPower[hour], powerWithShading.toFixed(2));
-
-        if (powerWithShading > maxPower) {
-            maxPower = powerWithShading;
+        // hourlyPower[hour] = Math.max(hourlyPower[hour], powerWithShading.toFixed(2));
+        hourlyPower[hour] = Math.max(hourlyPower[hour], power.toFixed(2));
+        if (power > maxPower) {
+            // maxPower = powerWithShading;
+            maxPower = power;
         }
     }
     return { maxPower, hourlyPower };
@@ -771,11 +834,13 @@ function numberOfDaysInMonth(month){
 
 
 function createSunPathDiagram(lat, lng) {
-    const isNorthernHemisphere = lat >= 0;
     const canvas = document.getElementById('sunPathDiagram');
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
+    
+    // Determine hemisphere
+    const isNorthernHemisphere = lat >= 0;
 
     // Clear and set background
     ctx.clearRect(0, 0, width, height);
@@ -785,42 +850,32 @@ function createSunPathDiagram(lat, lng) {
     // Draw grid
     ctx.strokeStyle = '#ddd';
     ctx.lineWidth = 0.5;
-    for (let i = 0; i <= width; i += width / 24) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, height);
-        ctx.stroke();
-    }
-    for (let i = 0; i <= height; i += height / 6) {
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(width, i);
-        ctx.stroke();
-    }
-
-    // Draw horizon line
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, height);
-    ctx.lineTo(width, height);
-    ctx.stroke();
-
-    // Add cardinal directions
-    ctx.fillStyle = 'black';
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
     
-    // Display E-S/N-W with S for Southern Hemisphere and N for Northern Hemisphere
-    ctx.fillText('E', width * 0.15, height - 10);
-    ctx.fillText(isNorthernHemisphere ? 'N' : 'S', width * 0.5, height - 10);
-    ctx.fillText('W', width * 0.85, height - 10);
+    // Vertical time lines (every hour)
+    for (let hour = 0; hour <= 24; hour += 1) {
+        const x = width * (hour / 24);
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+    }
 
-    // Add labels
-    ctx.textAlign = 'left';
-    ctx.fillText('Horizon', 10, height - 10);
-    ctx.fillText('Zenith (90°)', 10, 20);
-    ctx.fillText('45°', 10, height / 2);
+    // Horizontal altitude lines
+    for (let altitude = 0; altitude <= 90; altitude += 15) {
+        const y = height - (height * altitude / 90);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+        
+        // Add altitude labels
+        if (altitude % 30 === 0) {
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${altitude}°`, 25, y + 4);
+        }
+    }
 
     // Calculate sun positions
     const year = new Date().getFullYear();
@@ -829,17 +884,16 @@ function createSunPathDiagram(lat, lng) {
         new Date(year, 2, 20),  // Spring equinox
         new Date(year, 5, 21)   // Summer solstice
     ];
-    
+
+    // Fixed colors for each season regardless of hemisphere
+    const pathColors = ['#0066cc', '#009933', '#cc3300'];  // Winter=Blue, Spring=Green, Summer=Red
+    const seasonLabels = ['Winter', 'Spring/Fall', 'Summer'];
+
+    // For Southern Hemisphere, reverse the days array to swap winter and summer labels
     if (!isNorthernHemisphere) {
-        days.reverse(); // Reverse seasons for Southern hemisphere
+        days.reverse();
     }
 
-    const pathColors = ['#0066cc', '#009933', '#cc3300'];
-    const seasonLabels = isNorthernHemisphere ? 
-        ['Winter', 'Spring/Fall', 'Summer'] :
-        ['Summer', 'Spring/Fall', 'Winter'];  // Updated season labels for Southern Hemisphere
-
-    // Rest of the code remains the same...
     // Draw paths for each season
     days.forEach((day, index) => {
         const sunPositions = [];
@@ -849,65 +903,82 @@ function createSunPathDiagram(lat, lng) {
             date.setHours(hour, (hour % 1) * 60, 0);
             const sunPos = SunCalc.getPosition(date, lat, lng);
             
-            if (sunPos.altitude > 0) {
-                let azimuth = (sunPos.azimuth * 180 / Math.PI + 180) % 360;
-                const normalizedAzimuth = (azimuth + 180) % 360;
-                const x = width * 0.15 + (width * 0.7 * (normalizedAzimuth / 360));
-                const altitude = sunPos.altitude * 180 / Math.PI;
-                const normalizedAltitude = Math.sin((normalizedAzimuth * Math.PI) / 360) * altitude;
-                const y = height - (height * altitude / 90);
-                
-                sunPositions.push({
-                    x: x,
-                    y: y,
-                    hour: hour,
-                    azimuth: azimuth,
-                    altitude: altitude
-                });
+            // Convert altitude to y-coordinate
+            const altitude = sunPos.altitude * 180 / Math.PI;
+            const y = height - (height * Math.max(0, altitude) / 90);
+            
+            // Convert hour to x-coordinate
+            const x = width * (hour / 24);
+            
+            if (altitude > 0) {
+                sunPositions.push({x, y, hour, altitude});
             }
         }
-
-        // Sort positions by x-coordinate for smooth path
-        sunPositions.sort((a, b) => a.x - b.x);
 
         // Draw the path
         ctx.strokeStyle = pathColors[index];
         ctx.lineWidth = 2;
         ctx.beginPath();
+        
         sunPositions.forEach((pos, i) => {
             if (i === 0) ctx.moveTo(pos.x, pos.y);
             else ctx.lineTo(pos.x, pos.y);
         });
         ctx.stroke();
 
-        // Add hour markers and labels
+        // Add markers and time labels at every hour
         sunPositions.filter(pos => Math.floor(pos.hour) === pos.hour).forEach(pos => {
+            // Draw marker
             ctx.fillStyle = pathColors[index];
             ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 4, 0, 2 * Math.PI);
+            ctx.arc(pos.x, pos.y, 3, 0, 2 * Math.PI);
             ctx.fill();
-
-            if (pos.hour % 2 === 0) {
-                ctx.fillStyle = 'black';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'center';
-                const timeLabel = `${String(Math.floor(pos.hour)).padStart(2, '0')}:00`;
-                ctx.fillText(timeLabel, pos.x, pos.y - 10);
-            }
+            
+            // Add time label for all paths
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            const timeLabel = `${String(Math.floor(pos.hour)).padStart(2, '0')}:00`;
+            const labelOffset = -10;
+            ctx.fillText(timeLabel, pos.x, pos.y + labelOffset);
         });
     });
 
-    // Add legend
+    // Draw horizon line
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    ctx.lineTo(width, height);
+    ctx.stroke();
+
+    // Add cardinal directions with N/S based on hemisphere
+    ctx.fillStyle = 'black';
     ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('E', width * 0.25, height - 5);
+    ctx.fillText(isNorthernHemisphere ? 'N' : 'S', width * 0.5, height - 5);
+    ctx.fillText('W', width * 0.75, height - 5);
+
+    // Add title and labels
+    ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'left';
+    ctx.fillText('Zenith', 10, 25);
+    ctx.fillText('Horizon', 10, height - 5);
+
+    // Add legend with fixed colors for seasons
+    ctx.font = 'bold 14px Arial';
     seasonLabels.forEach((season, i) => {
         ctx.fillStyle = pathColors[i];
-        const y = 30 + i * 20;
+        const y = 60 + i * 20;
         ctx.fillRect(width - 120, y - 10, 15, 15);
         ctx.fillStyle = 'black';
         ctx.fillText(season, width - 100, y);
     });
 }
+
+
+
 //the user inputs coordinates
 
 function initializeLocationInput() {
@@ -1001,9 +1072,11 @@ async function updateLocation(lat, lng) {
                 document.getElementById('peakPower').innerText = 'Error: Invalid calculation';
             } else {
                 document.getElementById('peakPower').innerText = maxPower.toFixed(2);
+                maxPowerWithParameters(maxPower,false);
+                maxPowerWithParameters(maxPower,true);
             }
-            updatePowerChart(hourlyPower);
-            updateMonthlyPowerChart(monthlyAveragePower);
+            updatePowerChart(lat, lng, tilt, azimuth)           
+             updateMonthlyPowerChart(monthlyAveragePower);
 
         } else {
             console.error('No solar data available or empty data set');
@@ -1015,13 +1088,44 @@ async function updateLocation(lat, lng) {
         //console.error('Error updating location:', error);
         //document.getElementById('peakPower').innerText = 'Error: ' + error.message;
     }
+    // calculateAvgPower()
 
     const tilt = document.getElementById('tilt').value;
     const azimuth = document.getElementById('azimuth').value;
+
+    /* TODO: fix this plot the hourly averages. method returns June and December as a list  */
+    getJuneAndDecemberHourlyAvgPower(tilt, azimuth, lat, lng);
     initSolarDiagram();
     updateSolarDiagram(tilt, azimuth);
     createSunPathDiagram(lat, lng);
 }
+
+
+/**
+ * Modifies the Power output on the Peak Power Generation Card.  The card has two extra parameters
+ * shading and soiling. Each changes the power respectively
+ * @param {Number} maxPower the maximum power of the location
+ * @param {boolean} shading if set true, we will run the shadingFactor method, else we will run the soiling factor calculation
+ */
+function maxPowerWithParameters(maxPower, shading){
+    const documentToChange = (shading) ? "shadingPower" : "soilingPower";
+    const documentToRead = (shading) ? "shading" : "soiling";
+
+    const documentValue = document.getElementById(documentToRead).value;
+    const value = parseFloat(documentValue);
+
+    if (value > 0) {
+        // (true) ? shading calc : (false) soiling calc
+        let power = (shading) ? maxPower * calculateShadingFactor(value) : maxPower * (1 - value);
+
+        power = (power < 0) ? 0.00.toFixed(2) : power.toFixed(2);
+
+        document.getElementById(documentToChange).innerHTML = power
+    } else{
+        document.getElementById(documentToChange).innerHTML = maxPower.toFixed(2);
+    }
+}
+
 
 // update location v2
 async function updatePeakPowerByControl(lat, lng, azimuth, tilt) {
@@ -1046,13 +1150,12 @@ async function updatePeakPowerByControl(lat, lng, azimuth, tilt) {
                 document.getElementById('peakPower').innerText = 'Error: Invalid calculation';
             } else {
                 document.getElementById('peakPower').innerText = maxPower.toFixed(2);
+                maxPowerWithParameters(maxPower,false);
+                maxPowerWithParameters(maxPower,true);
+
             }
 
-            //const consumptionType = document.querySelector('input[name="consumptionType"]:checked').value;
-            //const panelCalculations = calculateRequiredPanels(solarData, consumptionType);
-            //updatePanelCalculationUI(panelCalculations);
-
-            updatePowerChart(hourlyPower);
+            updatePowerChart(lat, lng, tilt, azimuth);
             const monthlyAveragePower = calculateMonthlyAverages(dailyData, tilt, azimuth, lat);
             updateMonthlyPowerChart(monthlyAveragePower);
 
@@ -1063,8 +1166,8 @@ async function updatePeakPowerByControl(lat, lng, azimuth, tilt) {
 
         map.setView([lat, lng], map.getZoom());
     } catch (error) {
-        //console.error('Error updating location:', error);
-        //document.getElementById('peakPower').innerText = 'Error: ' + error.message;
+        console.error('Error updating location:', error);
+        // document.getElementById('peakPower').innerText = 'Error: ' + error.message;
     }
 
     initSolarDiagram(); // Add this line
@@ -1097,7 +1200,8 @@ function updateControls() {
     updateSolarDiagram(tilt, azimuth);
 
     // No longer a simple linear shading factor
-    shadingFactor = calculateShadingFactor(shading);
+    // const shadingFactor = calculateShadingFactor(shading);
+    // const soilingFactor = 1 - soiling;
 
     // Debounce heavy calculations
     updateTimeout = setTimeout(() => {
@@ -1280,27 +1384,16 @@ function updateLabel(name, text, position) {
 }
 
 
-function updatePowerChart(hourlyPower) {
+async function updatePowerChart(lat, lng, tilt, azimuth) {
     const ctx = document.getElementById('powerChart').getContext('2d');
-    const soilingRatio = parseFloat(document.getElementById('soiling').value);
-    const shading = parseFloat(document.getElementById('shading').value);
-    const season = document.getElementById('season').value;
-    const isNorthernHemisphere = parseFloat(document.getElementById('location').value.split(',')[0]) > 0;
+    const isNorthernHemisphere = lat > 0;
     
-    const hemisphere = isNorthernHemisphere ? 'Northern' : 'Southern';
-    const seasonDate = isNorthernHemisphere ? 
-        (season === 'summer' ? 'June 21' : 'December 21') :
-        (season === 'summer' ? 'December 21' : 'June 21');
-
-    const powerWithoutSoiling = Array.isArray(hourlyPower) && hourlyPower.length === 24
-        ? hourlyPower
-        : Array(24).fill(0);
-
-    // Apply soiling factor
-    const powerWithSoiling = powerWithoutSoiling.map(value => value * (1 - soilingRatio));
-
-    // Apply non-linear shading
-    const powerWithShading = powerWithoutSoiling.map(value => value * calculateShadingFactor(shading));
+    // Get June and December data using your existing function
+    const { june, december } = await getJuneAndDecemberHourlyAvgPower(tilt, azimuth, lat, lng);
+    
+    // Determine which month represents summer/winter based on hemisphere
+    const summerPower = isNorthernHemisphere ? june : december;
+    const winterPower = isNorthernHemisphere ? december : june;
 
     // If there's already a chart, destroy it before creating a new one
     if (powerChart) {
@@ -1314,28 +1407,19 @@ function updatePowerChart(hourlyPower) {
             labels: Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0') + ':00'),
             datasets: [
                 {
-                    label: 'Power Without Soiling (W)',
-                    data: powerWithoutSoiling,
-                    borderColor: 'rgb(75, 192, 192)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    label: 'Summer Average Power (W)',
+                    data: summerPower,
+                    borderColor: 'rgb(255, 0, 0)', // Red for summer
+                    backgroundColor: 'rgba(255, 0, 0, 0.1)',
                     borderWidth: 2,
                     tension: 0.4,
                     fill: true,
                 },
                 {
-                    label: 'Power With Soiling (W)',
-                    data: powerWithSoiling,
-                    borderColor: 'rgb(255, 99, 132)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true,
-                },
-                {
-                    label: 'Power With Shading (W)',
-                    data: powerWithShading,
-                    borderColor: 'rgb(255, 165, 0)',
-                    backgroundColor: 'rgba(255, 165, 0, 0.1)',
+                    label: 'Winter Average Power (W)',
+                    data: winterPower,
+                    borderColor: 'rgb(0, 0, 255)', // Blue for winter
+                    backgroundColor: 'rgba(0, 0, 255, 0.1)',
                     borderWidth: 2,
                     tension: 0.4,
                     fill: true,
@@ -1395,7 +1479,7 @@ function updatePowerChart(hourlyPower) {
                 },
                 title: {
                     display: true,
-                    text: `${hemisphere} Hemisphere - ${season.charAt(0).toUpperCase() + season.slice(1)} Solstice (${seasonDate})`,
+                    text: `${isNorthernHemisphere ? 'Northern' : 'Southern'} Hemisphere - Seasonal Power Comparison`,
                     color: '#ffffff',
                     font: {
                         size: 14
@@ -1405,6 +1489,7 @@ function updatePowerChart(hourlyPower) {
         },
     });
 }
+
 
 function updateMonthlyPowerChart(monthlyAveragePower) {
     const ctx = document.getElementById('monthlyPowerChart').getContext('2d');
@@ -1507,7 +1592,6 @@ function calculatePanelCount(dailyConsumption) {
 
         window.onload = () => {
             initMap();
-            addSeasonControl();  // Add this line
             updatePowerChart();
             initSolarDiagram();
             updateControls();
