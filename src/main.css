@@ -22,7 +22,7 @@ h1 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: auto auto;
-    gap: 0.5vh;
+    gap: 0vh;
     width: 98vw;
     max-width: 1700px;
     margin: 0 auto;
