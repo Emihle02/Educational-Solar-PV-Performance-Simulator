@@ -10,44 +10,84 @@ let monthlyPowerChart;
 document.getElementById("shading").value = 25;
 document.getElementById("soiling").value = 0.25;
 
-function calculateSystemRequirements(solarData, houseType) {
-    // Constants
-    const PANEL_RATING = 0.4; // 400W = 0.4kW
-    const GRID_EFFICIENCY = 0.75; // 75% efficiency for grid-connected system
-    const OFF_GRID_EFFICIENCY = 0.65; // 65% efficiency for off-grid (accounting for battery losses)
-    const DAILY_CONSUMPTION = houseType === 'rural' ? 4 : 35; // kWh
+async function getHourlySolarDataforSizing(lat, lng, season) {
+    const isNorthernHemisphere = lat > 0;
     
-    // Calculate annual energy needed
-    const ANNUAL_ENERGY = DAILY_CONSUMPTION * 365; // kWh
+    // Define solstice dates based on hemisphere
+    const solsticeDates = {
+        northern: {
+            summer: "0621", // June 21
+            winter: "1221"  // December 21
+        },
+        southern: {
+            summer: "1221", // December 21
+            winter: "0621"  // June 21
+        }
+    };
 
-    // Calculate Peak Sun Hours (PSH) using GHI data
+    // Select the appropriate dates based on hemisphere
+    const hemisphere = isNorthernHemisphere ? 'northern' : 'southern';
+    const date = solsticeDates[hemisphere][season];
+    
+    // Use the year 2023 for consistency
+    const year = "2023";
+    const fullDate = `${year}${date}`;
+    
+    const nasa_url = getApiUrl(fullDate, fullDate, lat, lng, "hourly");
+    
+    try {
+        const solar_data = await retrieveSolarData(nasa_url, lat, lng);
+        return solar_data;
+    } catch (error) {
+        console.error(`Error fetching ${season} solar data:`, error);
+        return null;
+    }
+}
+
+function calculatePeakSunHours(solarData) {
     let dailyGHI = 0;
     const hourlyValues = [];
 
-    // Sum up all GHI values for the day and store hourly values
+    // Sum up all GHI values for the day
     for (const timestamp in solarData) {
         const data = JSON.parse(solarData[timestamp]);
         dailyGHI += data.ghi;
         hourlyValues.push(data.ghi);
     }
     
-    // Calculate PSH
-    // PSH is the number of hours per day when solar irradiance averages 1000 W/m²
-    // So we take the total daily irradiance (in Wh/m²) and divide by 1000 W/m²
-    const peakSunHours = dailyGHI / 1000;
-    console.log('Peak Sun Hours:', peakSunHours);
+    return dailyGHI / 1000;
+}
 
+async function calculateSystemRequirements(houseType, lat, lng) {
+    // Constants
+    const PANEL_RATING = 0.4; // 400W = 0.4kW
+    const SYSTEM_EFFICIENCY = 0.75; // 75% efficiency
+    const DAILY_CONSUMPTION = houseType === 'rural' ? 3.3 : 15; // kWh
     
-    // Calculate system sizes and panel counts for both grid and off-grid
-    const gridCalculations = calculateSystemSize(DAILY_CONSUMPTION, PANEL_RATING, peakSunHours, GRID_EFFICIENCY);
-    const offGridCalculations = calculateSystemSize(DAILY_CONSUMPTION, PANEL_RATING, peakSunHours, OFF_GRID_EFFICIENCY);
+    // Get solar data for both summer and winter
+    const summerData = await getHourlySolarDataforSizing(lat, lng, 'summer');
+    const winterData = await getHourlySolarDataforSizing(lat, lng, 'winter');
+    
+    if (!summerData || !winterData) {
+        throw new Error('Unable to retrieve solar data');
+    }
+
+    // Calculate Peak Sun Hours for both seasons
+    const summerPSH = calculatePeakSunHours(summerData);
+    const winterPSH = calculatePeakSunHours(winterData);
+    
+    // Calculate annual energy needed
+    const ANNUAL_ENERGY = DAILY_CONSUMPTION * 365; // kWh
+
+    // Calculate system sizes for summer and winter
+    const summerCalculations = calculateSystemSize(DAILY_CONSUMPTION, PANEL_RATING, summerPSH, SYSTEM_EFFICIENCY);
+    const winterCalculations = calculateSystemSize(DAILY_CONSUMPTION, PANEL_RATING, winterPSH, SYSTEM_EFFICIENCY);
 
     return {
         dailyConsumption: DAILY_CONSUMPTION,
         annualConsumption: ANNUAL_ENERGY,
-        gridSystem: gridCalculations,
-        offGridSystem: offGridCalculations,
-        peakSunHours: peakSunHours
+        summerSystem: summerCalculations,
+        winterSystem: winterCalculations
     };
 }
 
@@ -85,17 +125,17 @@ function updateCalculatorUI(results) {
     document.getElementById('annual-consumption').textContent = 
         `${results.annualConsumption.toFixed(1)} kWh`;
     
-    // Update grid-connected system details
-    document.getElementById('pv-grid-size').textContent = 
-        `${results.gridSystem.systemSize.toFixed(2)} kW`;
-    document.getElementById('panel-count-grid').textContent = 
-        results.gridSystem.panelCount;
+    // Update summer system details
+    document.getElementById('pv-summer-size').textContent = 
+        `${results.summerSystem.systemSize.toFixed(2)} kW`;
+    document.getElementById('panel-count-summer').textContent = 
+        results.summerSystem.panelCount;
     
-    // Update off-grid system details
-    document.getElementById('pv-off-grid-size').textContent = 
-        `${results.offGridSystem.systemSize.toFixed(2)} kW`;
-    document.getElementById('panel-count-off-grid').textContent = 
-        results.offGridSystem.panelCount;
+    // Update winter system details
+    document.getElementById('pv-winter-size').textContent = 
+        `${results.winterSystem.systemSize.toFixed(2)} kW`;
+    document.getElementById('panel-count-winter').textContent = 
+        results.winterSystem.panelCount;
 }
 
 // Event listener for the calculate button
@@ -105,13 +145,8 @@ document.getElementById('calculate-button').addEventListener('click', async () =
     const lng = parseFloat(document.getElementById('location').value.split(',')[1]);
     
     try {
-        const solarData = await getHourlySolarData(lat, lng);
-        if (solarData) {
-            const results = calculateSystemRequirements(solarData, houseType);
-            updateCalculatorUI(results);
-        } else {
-            console.error('No solar data available');
-        }
+        const results = await calculateSystemRequirements(houseType, lat, lng);
+        updateCalculatorUI(results);
     } catch (error) {
         console.error('Error calculating system requirements:', error);
     }
@@ -978,34 +1013,6 @@ function createSunPathDiagram(lat, lng) {
 }
 
 
-
-//the user inputs coordinates
-
-function initializeLocationInput() {
-    const locationInput = document.getElementById('location');
-    const applyButton = document.getElementById('applyLocation');
-
-    applyButton.addEventListener('click', function() {
-        const coordinates = locationInput.value.split(',').map(coord => parseFloat(coord.trim()));
-        if (coordinates.length === 2 && !isNaN(coordinates[0]) && !isNaN(coordinates[1])) {
-            const [lat, lng] = coordinates;
-            updateLocation(lat, lng);
-            marker.setLatLng([lat, lng]);
-            map.setView([lat, lng], map.getZoom());
-        } else {
-            alert('Please enter valid coordinates in the format "latitude, longitude"');
-        }
-    });
-
-    // Allow updating location when pressing Enter in the input field
-    locationInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            applyButton.click();
-        }
-    });
-}
-
-
 // Add this CSS to your stylesheet or add it inline in your HTML
 function initMap() {
     map = L.map('map').setView([-33.9344,18.8640], 9);
@@ -1075,6 +1082,7 @@ async function updateLocation(lat, lng) {
                 maxPowerWithParameters(maxPower,false);
                 maxPowerWithParameters(maxPower,true);
             }
+            getJuneAndDecemberHourlyAvgPower(tilt, azimuth, lat, lng);
             updatePowerChart(lat, lng, tilt, azimuth)           
              updateMonthlyPowerChart(monthlyAveragePower);
 
@@ -1094,7 +1102,6 @@ async function updateLocation(lat, lng) {
     const azimuth = document.getElementById('azimuth').value;
 
     /* TODO: fix this plot the hourly averages. method returns June and December as a list  */
-    getJuneAndDecemberHourlyAvgPower(tilt, azimuth, lat, lng);
     initSolarDiagram();
     updateSolarDiagram(tilt, azimuth);
     createSunPathDiagram(lat, lng);
@@ -1163,7 +1170,7 @@ async function updatePeakPowerByControl(lat, lng, azimuth, tilt) {
                 maxPowerWithParameters(maxPower,true);
 
             }
-
+            
             updatePowerChart(lat, lng, tilt, azimuth);
             const monthlyAveragePower = calculateMonthlyAverages(dailyData, tilt, azimuth, lat);
             updateMonthlyPowerChart(monthlyAveragePower);
@@ -1189,7 +1196,7 @@ async function updatePeakPowerByControl(lat, lng, azimuth, tilt) {
 let isUpdating = false;
 let updateTimeout;
 
-function updateControls() {
+function updateControls(skipUpdates = false) {
     // Clear any pending timeout
     clearTimeout(updateTimeout);
 
@@ -1202,15 +1209,14 @@ function updateControls() {
     // Update UI values immediately
     document.getElementById('azimuthValue').textContent = azimuth;
     document.getElementById('tiltValue').textContent = tilt;
-    document.getElementById('soilingValue').textContent = soiling ;
+    document.getElementById('soilingValue').textContent = soiling;
     document.getElementById('shadingValue').textContent = shading + '%';
 
     // Update solar diagram
     updateSolarDiagram(tilt, azimuth);
 
-    // No longer a simple linear shading factor
-    // const shadingFactor = calculateShadingFactor(shading);
-    // const soilingFactor = 1 - soiling;
+    // Skip the heavy calculations if this is the initial load
+    if (skipUpdates) return;
 
     // Debounce heavy calculations
     updateTimeout = setTimeout(() => {
@@ -1226,8 +1232,9 @@ function updateControls() {
                     isUpdating = false;
                 });
         }
-    }, 100); // 300ms delay before heavy calculations
+    }, 10);
 }
+
 
 
 function initSolarDiagram() {
@@ -1599,11 +1606,30 @@ function calculatePanelCount(dailyConsumption) {
             updateLocation(lat, lng);
         }
 
-        window.onload = () => {
+        window.onload = async () => {
+            // Initialize the map first
             initMap();
-            updatePowerChart();
+            
+            // Initialize diagrams and UI elements
             initSolarDiagram();
-            updateControls();
-            updateFinancialAspects();
+            updatePowerChart();
+            
+            // Update controls without triggering heavy calculations
+            updateControls(true);
+            
+            // Initialize location input
             initializeLocationInput();
+            
+            // Get initial location
+            const locationInput = document.getElementById('location');
+            const [lat, lng] = locationInput.value.split(',').map(coord => parseFloat(coord.trim()));
+            
+            // Do a single update of all calculations and charts
+            await updatePeakPowerByControl(lat, lng, 
+                parseFloat(document.getElementById('azimuth').value),
+                parseFloat(document.getElementById('tilt').value)
+            );
+            
+            // Update financial aspects last
+            updateFinancialAspects();
         };

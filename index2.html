@@ -3,8 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Solar Panel Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">    <title>Solar Panel Web</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" type="text/css" href="src/main.css" />
 </head>
@@ -31,7 +30,7 @@
             <label for="soiling"><span class="tooltip" data-tooltip="This value represents how dirty the panel's surface is, affecting its efficiency. A value of 0 means the panel is completely clean, while 1 means it's fully covered with dirt or dust, reducing power output.">Soiling Ratio:</span>
                 <span id="soilingValue">0</span></label>
             <input type="range" id="soiling" min="0" max="1" step="0.01" value="0" oninput="updateControls()" />
-            <label for="soiling"><span class="tooltip" data-tooltip="This is the percentage of the solar panel's surface blocked by external objects like trees or buildings. A value of 0% means no shading, while 100% means the entire panel is in shadow, drastically reducing power output."> Shading:</span>
+            <label for="soiling"><span class="tooltip" data-tooltip="Percentage of panel blocked by trees/buildings (0% = no shade, 100% = full shade)"> Shading:</span>
                 <span id="shadingValue">0</span></label>
             <input type="range" id="shading" min="0" max="100" step="1" value="0" oninput="updateControls()" />
             <h2>Peak Power Generation</h2>
@@ -53,24 +52,22 @@
         
         <div class="card financial-aspect">
             <h2>PV System Sizing Calculator</h2>
-    <label for="house-type">Select House Size:</label>
-    <select id="house-type">
-        <option value="urban">Large</option>
-        <option value="rural">Small</option>
-    </select>
-    <button id="calculate-button">Calculate</button>
+<label for="house-type">Select House Size:</label>
+<select id="house-type">
+    <option value="urban">Large</option>
+    <option value="rural">Small</option>
+</select>
+<button id="calculate-button">Calculate</button>
+<div>
+    <p>Daily Consumption: <span id="daily-consumption"></span></p>
+    <p>Annual Consumption: <span id="annual-consumption"></span></p>
+    <p>PV Size (Summer): <span id="pv-summer-size"></span></p>
+    <p>PV Size (Winter): <span id="pv-winter-size"></span></p>
+    <p>Panel Count (Summer): <span id="panel-count-summer"></span></p>
+    <p>Panel Count (Winter): <span id="panel-count-winter"></span></p>
+</div>
+</div>
 
-    <div>
-        <p>Daily Consumption: <span id="daily-consumption"></span></p>
-        <p>Annual Consumption: <span id="annual-consumption"></span></p>
-        <p>PV Grid Size: <span id="pv-grid-size"></span></p>
-        <p>PV Off-Grid Size: <span id="pv-off-grid-size"></span></p>
-        <p>Panel Count (Grid): <span id="panel-count-grid"></span></p>
-        <p>Panel Count (Off-Grid): <span id="panel-count-off-grid"></span></p>
-    </div>
-            </div>
-
-        
 
         <!-- Second Row -->
         <div class="card" id="pv-module">

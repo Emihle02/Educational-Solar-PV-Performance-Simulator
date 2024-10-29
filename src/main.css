@@ -7,22 +7,23 @@ body {
     align-items: center;
     min-height: 100vh;
     margin: 0;
-    padding: 20px;
+    padding: 1vh;
     box-sizing: border-box;
 }
 
 h1 {
-    margin-bottom: 20px;
+    margin-bottom: 1vh;
     color: #ffffff;
     text-align: center;
+    font-size: clamp(1rem, 2vw, 1.5rem);
 }
 
 .dashboard {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: auto auto;
-    gap: 20px;
-    width: 100%;
+    gap: 0.5vh;
+    width: 98vw;
     max-width: 1700px;
     margin: 0 auto;
 }
@@ -40,7 +41,7 @@ h1 {
 #pv-module,
 .output-power {
     grid-row: 2;
-    height: 350px;
+    height: 300px;
 }
 
 /* Individual card styles */
@@ -136,6 +137,41 @@ canvas {
     margin-bottom: 0.5rem;
 }
 
+
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .dashboard {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, 24vh);
+    }
+
+    .card {
+        grid-column: span 1 !important;
+    }
+}
+@media (max-width: 768px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(8, 12vh);
+    }
+
+    body {
+        padding: 0.5vh;
+    }
+
+    .card {
+        padding: 0.5vh 1vw;
+    }
+
+    #pv-module {
+        grid-column: 1;
+    }
+}
+
+#pv-module {
+    grid-column: 1 / span 2;  /* Makes Sun Path Diagram wider */
+}
 /* Tooltip styles */
 .tooltip {
     position: relative;
@@ -147,8 +183,8 @@ canvas {
   .tooltip::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 100%; /* Changed from 120% */
-    left: 140%;
+    bottom: 10%; /* Changed from 120% */
+    left: 150%;
     transform: translateX(-50%);
     background-color: rgba(51, 51, 51, 0.95);
     color: #fff;
@@ -156,7 +192,7 @@ canvas {
     border-radius: 5px;
     font-size: 12px;
     white-space: normal; /* Changed from nowrap */
-    max-width: 250px; /* Add maximum width */
+    max-width: 150px; /* Add maximum width */
     width: max-content; /* Add this */
     opacity: 0;
     visibility: hidden; /* Add this */
@@ -173,45 +209,3 @@ canvas {
     visibility: visible;
   }
   
-
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-    .dashboard {
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(4, auto);
-    }
-
-    .card {
-        grid-column: span 1 !important;
-    }
-
-    #map,
-    .controls,
-    .card:nth-child(3),
-    .financial-aspect,
-    #pv-module,
-    .output-power {
-        height: 250px;
-    }
-}
-
-@media (max-width: 768px) {
-    .dashboard {
-        grid-template-columns: 1fr;
-        padding: 10px;
-    }
-
-    .card {
-        height: auto !important;
-        min-height: 250px;
-    }
-
-    .tooltip::after {
-        max-width: 200px;
-        font-size: 11px;
-        padding: 6px 10px;
-    }
-}
-#pv-module {
-    grid-column: 1 / span 2;  /* Makes Sun Path Diagram wider */
-}
