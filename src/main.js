@@ -7,8 +7,8 @@ let monthlyPowerChart;
 //let shadingFactor = 1; // No shading by default
 
 // default soiling and shading values
-document.getElementById("shading").value = 25;
-document.getElementById("soiling").value = 0.25;
+document.getElementById("shading").value = 0;
+document.getElementById("soiling").value = 0;
 
 async function getHourlySolarDataforSizing(lat, lng, season) {
     const isNorthernHemisphere = lat > 0;
@@ -61,7 +61,7 @@ function calculatePeakSunHours(solarData) {
 async function calculateSystemRequirements(houseType, lat, lng) {
     // Constants
     const PANEL_RATING = 0.4; // 400W = 0.4kW
-    const SYSTEM_EFFICIENCY = 0.75; // 75% efficiency
+    const SYSTEM_EFFICIENCY = 0.20; // 75% efficiency
     const DAILY_CONSUMPTION = houseType === 'rural' ? 3.3 : 15; // kWh
     
     // Get solar data for both summer and winter
@@ -447,7 +447,7 @@ function retrieve_vips(api_data){
         console.log("Something is wrong");
     }
 
-    console.log("Inside the vip",vips)
+    //console.log("Inside the vip",vips)
     return vips;
 }
 
@@ -582,7 +582,6 @@ function retrieve_data(key , data){
     return clean_data
 
 }
-
 
 function getHourAngle(time){
     const hours = time.split('T')[1]
@@ -781,7 +780,7 @@ async function retrieveSolarData(nasa_url,lat,lng){
         const solar_data = clean_solar_data_and_add_zenith(data, lat, lng)
         return solar_data
     } catch (error) {
-        console.error('Error fetching solar data:', error);
+        //console.error('Error fetching solar data:', error);
         return null;
     }
 }
@@ -817,17 +816,29 @@ function calculateMonthlyAverages(solarData, tilt, azimuth, lat) {
             const month = date.getMonth();
 
             // Validate required irradiance data
-            if (typeof data.ghi !== 'number' || typeof data.dhi !== 'number' || typeof data.dni !== 'number') {
-                continue;
-            }
+
+            const GHI = data.ghi;
+            //console.log("GHI:", GHI);
+    
+            const DHI = data.dhi;
+           // console.log("DHI:", DHI);
+    
+            const DNI = data.dni;
+            //console.log("DNI:", DNI);
+            const SZA = data.zen;
+            const SAA = data.azm;
+            //the solar irradiance 
 
             // Calculate solar position and angle of incidence
             const solarDeclination = solar_declination(date.getDate());
+            console.log('solar declination',solarDeclination)
             const hourAngle = 0; // Solar noon reference
-            const theta = calculateAngleOfIncidence(tilt, azimuth, solarDeclination, hourAngle, lat);
+            const theta = calculateAngleOfIncidence(tilt, azimuth, SAA, SZA );
+            //console.log("daily Power", dailyPower)
 
             // Calculate daily power output
-            const dailyPower = calculatePower(theta, data.ghi, data.dhi, data.dni, tilt);
+            const dailyPower = calculatePower(theta, GHI, DHI, DNI, tilt);
+            //console.log("daily Power", dailyPower)
 
             // Accumulate monthly totals
             if (dailyPower > 0) {
@@ -1108,6 +1119,7 @@ async function updateLocation(lat, lng) {
 }
 
 
+
 /**
  * Modifies the Power output on the Peak Power Generation Card.  The card has two extra parameters
  * shading and soiling. Each changes the power respectively
@@ -1232,7 +1244,7 @@ function updateControls(skipUpdates = false) {
                     isUpdating = false;
                 });
         }
-    }, 10);
+    }, 100);
 }
 
 
@@ -1403,13 +1415,37 @@ function updateLabel(name, text, position) {
 async function updatePowerChart(lat, lng, tilt, azimuth) {
     const ctx = document.getElementById('powerChart').getContext('2d');
     const isNorthernHemisphere = lat > 0;
-    
+
+    // Get shading and soiling values
+    const soilingValue = parseFloat(document.getElementById("soiling").value)|| 0;
+    const shadingValue = parseFloat(document.getElementById("shading").value)|| 0;
+
     // Get June and December data using your existing function
     const { june, december } = await getJuneAndDecemberHourlyAvgPower(tilt, azimuth, lat, lng);
-    
+
+    // Apply soiling and shading reductions
+    const applySoilingAndShading = (powerArray) => {
+        return powerArray.map(power => {
+            let adjustedPower = power;
+            
+            // Apply soiling reduction
+            if (soilingValue > 0) {
+                adjustedPower *= (1 - soilingValue);
+            }
+            
+            // Apply shading reduction
+            if (shadingValue > 0) {
+                adjustedPower *= calculateShadingFactor(shadingValue);
+            }
+            
+            // Ensure power doesn't go negative
+            return Math.max(0, adjustedPower);
+        });
+    };
+
     // Determine which month represents summer/winter based on hemisphere
-    const summerPower = isNorthernHemisphere ? june : december;
-    const winterPower = isNorthernHemisphere ? december : june;
+    const summerPower = applySoilingAndShading(isNorthernHemisphere ? june : december);
+    const winterPower = applySoilingAndShading(isNorthernHemisphere ? december : june);
 
     // If there's already a chart, destroy it before creating a new one
     if (powerChart) {
@@ -1506,6 +1542,16 @@ async function updatePowerChart(lat, lng, tilt, azimuth) {
     });
 }
 
+// Add event listeners to update the chart when soiling or shading changes
+document.getElementById("soiling").addEventListener('input', () => {
+    // Assuming you have existing latitude, longitude, tilt, and azimuth variables
+    updatePowerChart(latitude, longitude, tilt, azimuth);
+});
+
+document.getElementById("shading").addEventListener('input', () => {
+    // Assuming you have existing latitude, longitude, tilt, and azimuth variables
+    updatePowerChart(latitude, longitude, tilt, azimuth);
+});
 
 function updateMonthlyPowerChart(monthlyAveragePower) {
     const ctx = document.getElementById('monthlyPowerChart').getContext('2d');
@@ -1613,7 +1659,7 @@ function calculatePanelCount(dailyConsumption) {
             // Initialize diagrams and UI elements
             initSolarDiagram();
             updatePowerChart();
-            
+            updateMonthlyPowerChart();
             // Update controls without triggering heavy calculations
             updateControls(true);
             
