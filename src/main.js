@@ -718,10 +718,10 @@ function calculatheourlyPeakPower(solarData, tilt, azimuth, lat, lng) {
 
 function calculatePower(theta,GHI,DHI,DNI,tilt){
     const panelArea = 4; // Updated area for a 1kW solar panel in m^2
-    const panelEfficiency = 0.16; // Typical efficiency of a solar panel (20%)
+    const panelEfficiency = 0.20; // Typical efficiency of a solar panel (20%)
     
     // Calculate beam irradiance on tilted surface (Gb)
-    const Gb = DNI * Math.cos(theta * Math.PI / 180);
+    const Gb = DNI * Math.cos(theta);
 
     // Calculate diffuse irradiance on tilted surface (Gd)
     const Gd = DHI * (1 + Math.cos(tilt * Math.PI / 180)) / 2;
@@ -832,8 +832,7 @@ function calculateMonthlyAverages(solarData, tilt, azimuth, lat) {
             // Calculate solar position and angle of incidence
             const solarDeclination = solar_declination(date.getDate());
             console.log('solar declination',solarDeclination)
-            const hourAngle = 0; // Solar noon reference
-            const theta = calculateAngleOfIncidence(tilt, azimuth, SAA, SZA );
+            const theta = calculateAngleOfIncidence(tilt, azimuth, SZA, SAA );
             //console.log("daily Power", dailyPower)
 
             // Calculate daily power output
@@ -1244,7 +1243,7 @@ function updateControls(skipUpdates = false) {
                     isUpdating = false;
                 });
         }
-    }, 100);
+    }, 5);
 }
 
 
@@ -1417,8 +1416,8 @@ async function updatePowerChart(lat, lng, tilt, azimuth) {
     const isNorthernHemisphere = lat > 0;
 
     // Get shading and soiling values
-    const soilingValue = parseFloat(document.getElementById("soiling").value)|| 0;
-    const shadingValue = parseFloat(document.getElementById("shading").value)|| 0;
+    const soilingValue = parseFloat(document.getElementById("soiling").value);
+    const shadingValue = parseFloat(document.getElementById("shading").value);
 
     // Get June and December data using your existing function
     const { june, december } = await getJuneAndDecemberHourlyAvgPower(tilt, azimuth, lat, lng);

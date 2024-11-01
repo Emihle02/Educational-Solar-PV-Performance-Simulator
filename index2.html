@@ -52,21 +52,52 @@
         
         <div class="card financial-aspect">
             <h2>PV System Sizing Calculator</h2>
-<label for="house-type">Select House Size:</label>
-<select id="house-type">
-    <option value="urban">Large</option>
-    <option value="rural">Small</option>
-</select>
-<button id="calculate-button">Calculate</button>
-<div>
-    <p>Daily Consumption: <span id="daily-consumption"></span></p>
-    <p>Annual Consumption: <span id="annual-consumption"></span></p>
-    <p>PV Size (Summer): <span id="pv-summer-size"></span></p>
-    <p>PV Size (Winter): <span id="pv-winter-size"></span></p>
-    <p>Panel Count (Summer): <span id="panel-count-summer"></span></p>
-    <p>Panel Count (Winter): <span id="panel-count-winter"></span></p>
-</div>
-</div>
+            <label for="house-type">Select House Size:</label>
+            <select id="house-type">
+              <option value="urban">Large</option>
+              <option value="rural">Small</option>
+            </select>
+            <button id="calculate-button">Calculate</button>
+            <div>
+              <p>
+                <span class="tooltip" data-tooltip="The average amount of electricity your household uses in one day">
+                  Daily Consumption:
+                </span>
+                <span id="daily-consumption"></span>
+              </p>
+              <p>
+                <span class="tooltip" data-tooltip="Your total electricity usage over a full year">
+                  Annual Consumption:
+                </span>
+                <span id="annual-consumption"></span>
+              </p>
+              <p>
+                <span class="tooltip" data-tooltip="The recommended solar system size for summer based on longer daylight hours">
+                  PV Size (Summer):
+                </span>
+                <span id="pv-summer-size"></span>
+              </p>
+              <p>
+                <span class="tooltip" data-tooltip="The recommended solar system size for winter, accounting for shorter days and less sunlight">
+                  PV Size (Winter):
+                </span>
+                <span id="pv-winter-size"></span>
+              </p>
+              <p>
+                <span class="tooltip" data-tooltip="Number of solar panels needed to meet your summer electricity needs">
+                  Panel Count (Summer):
+                </span>
+                <span id="panel-count-summer"></span>
+              </p>
+              <p>
+                <span class="tooltip" data-tooltip="Number of solar panels needed to meet your winter electricity needs">
+                  Panel Count (Winter):
+                </span>
+                <span id="panel-count-winter"></span>
+              </p>
+            </div>
+          </div>
+          
 
 
         <!-- Second Row -->
