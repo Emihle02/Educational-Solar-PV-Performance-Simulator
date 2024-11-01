@@ -75,6 +75,13 @@ async function calculateSystemRequirements(houseType, lat, lng) {
     // Calculate Peak Sun Hours for both seasons
     const summerPSH = calculatePeakSunHours(summerData);
     const winterPSH = calculatePeakSunHours(winterData);
+
+    //more error handling.
+    if (summerPSH <= 0.001 || winterPSH <= 0.001) {
+        console.warn(`Very low sun hours detected for location (${lat}, ${lng}). 
+          Summer PSH: ${summerPSH}, Winter PSH: ${winterPSH}`);
+      }
+    
     
     // Calculate annual energy needed
     const ANNUAL_ENERGY = DAILY_CONSUMPTION * 365; // kWh
@@ -100,6 +107,12 @@ async function calculateSystemRequirements(houseType, lat, lng) {
  * @returns {Object} System size and panel count
  */
 function calculateSystemSize(dailyEnergy, panelRating, sunHours, efficiency) {
+    if (sunHours <= 0.001) {  // Using a small threshold to account for floating-point imprecision
+        return {
+          systemSize: 0,
+          panelCount: 0
+        };
+      }
     // Calculate required system size in kW
     const systemSize = dailyEnergy / (sunHours * efficiency);
     
@@ -1060,25 +1073,10 @@ function initMap() {
     });
 
 
-    // Bangkok, Thailand (13.7563, 100.5018)d
-//Alice Springs, Australia(-23.6980, 133.8807)d
-//(30.0333, 31.2333)d
-//Paris, France (48.8566, 2.3522)d
-//Miami/Richmond, USA (25.6153, -80.4410)d
-//Ulaanbaatar/Ulan Bator, Mongolia(47.9167, 106.9172)d
-//Thessaloniki/Livadákion, Greece(40.6401, 22.9444)d
-//Mexico City, Mexico(19.4326, -99.1332)d
-//Helsinki/Alppikylä, Finland(60.1695, 24.9354)d
-//Sydney Harbour/ Georges Heights, Australia(-33.8395, 151.2573)
-//Kenya(-3.3961, 38.5562)
-//Abashiri, Japan (44.0207, 144.2733)
-//Abu Dhabi, UAE(24.4539, 54.3773)
-//Al Udeid, Qatar(25.1173, 51.3147)
-//Babao, China(42.3917, 127.6992)
     map.on('click', onMapClick);
     // Initial marker
-    marker = L.marker([40.6401, 22.9444]).addTo(map);
-    updateLocation(40.6401, 22.9444);
+    marker = L.marker([-33.9344,18.8640]).addTo(map);
+    updateLocation(-33.9344,18.8640);
 }
 async function updateLocation(lat, lng) {
 
@@ -1259,7 +1257,7 @@ function updateControls(skipUpdates = false) {
                     isUpdating = false;
                 });
         }
-    }, 5);
+    }, 200);
 }
 
 
@@ -1395,10 +1393,11 @@ function updateSolarDiagram(tilt, azimuth) {
         console.error('Solar diagram not initialized');
         return;
     }
+    const normalizedAzimuth = (azimuth + 360) % 360;
 
     // Convert degrees to radians
     const tiltRad = THREE.MathUtils.degToRad(tilt);
-    const azimuthRad = THREE.MathUtils.degToRad(azimuth + 44);
+    const azimuthRad = THREE.MathUtils.degToRad(normalizedAzimuth + 44);
 
     // Update panel rotation
     panel.rotation.set(0, 0, 0); // Reset rotation
