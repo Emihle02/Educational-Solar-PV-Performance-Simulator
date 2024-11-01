@@ -61,7 +61,7 @@ function calculatePeakSunHours(solarData) {
 async function calculateSystemRequirements(houseType, lat, lng) {
     // Constants
     const PANEL_RATING = 0.4; // 400W = 0.4kW
-    const SYSTEM_EFFICIENCY = 0.20; // 75% efficiency
+    const SYSTEM_EFFICIENCY = 0.80; // 75% efficiency
     const DAILY_CONSUMPTION = houseType === 'rural' ? 3.3 : 15; // kWh
     
     // Get solar data for both summer and winter
@@ -1059,10 +1059,26 @@ function initMap() {
         coordsDiv.innerHTML = `Latitude: ${e.latlng.lat.toFixed(4)}°`;
     });
 
+
+    // Bangkok, Thailand (13.7563, 100.5018)d
+//Alice Springs, Australia(-23.6980, 133.8807)d
+//(30.0333, 31.2333)d
+//Paris, France (48.8566, 2.3522)d
+//Miami/Richmond, USA (25.6153, -80.4410)d
+//Ulaanbaatar/Ulan Bator, Mongolia(47.9167, 106.9172)d
+//Thessaloniki/Livadákion, Greece(40.6401, 22.9444)d
+//Mexico City, Mexico(19.4326, -99.1332)d
+//Helsinki/Alppikylä, Finland(60.1695, 24.9354)d
+//Sydney Harbour/ Georges Heights, Australia(-33.8395, 151.2573)
+//Kenya(-3.3961, 38.5562)
+//Abashiri, Japan (44.0207, 144.2733)
+//Abu Dhabi, UAE(24.4539, 54.3773)
+//Al Udeid, Qatar(25.1173, 51.3147)
+//Babao, China(42.3917, 127.6992)
     map.on('click', onMapClick);
     // Initial marker
-    marker = L.marker([-33.9344,18.8640]).addTo(map);
-    updateLocation(-33.9344,18.8640);
+    marker = L.marker([40.6401, 22.9444]).addTo(map);
+    updateLocation(40.6401, 22.9444);
 }
 async function updateLocation(lat, lng) {
 
