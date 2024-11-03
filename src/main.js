@@ -889,12 +889,16 @@ function numberOfDaysInMonth(month){
 
     return 31
 }
-
-function createSunPathDiagram(lat) {
+//createSunPathDiagram
+function createSunPathDiagram(lat, lng) {
     const canvas = document.getElementById('sunPathDiagram');
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
+    
+    const isNorthernHemisphere = lat >= 0;
+    const absLat = Math.abs(lat);
+    const isNearPoles = absLat > 66.5;
 
     // Clear and set background
     ctx.clearRect(0, 0, width, height);
@@ -905,8 +909,8 @@ function createSunPathDiagram(lat) {
     ctx.strokeStyle = '#ddd';
     ctx.lineWidth = 0.5;
     
-    // Vertical time lines (every hour from 0 to 23)
-    for (let hour = 0; hour <= 23; hour++) {
+    // Vertical time lines
+    for (let hour = 0; hour <= 24; hour++) {
         const x = width * (hour / 24);
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -914,7 +918,7 @@ function createSunPathDiagram(lat) {
         ctx.stroke();
     }
 
-    // Horizontal altitude lines (every 15 degrees)
+    // Horizontal altitude lines
     for (let altitude = 0; altitude <= 90; altitude += 15) {
         const y = height - (height * altitude / 90);
         ctx.beginPath();
@@ -930,86 +934,119 @@ function createSunPathDiagram(lat) {
         }
     }
 
-    // Calculate maximum solar altitudes based on latitude
-    const absLat = Math.abs(lat);
-    const isNorthernHemisphere = lat >= 0;
-    
-    // Calculate actual maximum altitudes for each season
-    // For summer/winter, use the hemisphere-appropriate calculation
-    let summerAlt = isNorthernHemisphere ? 
-        90 - absLat + 23.5 : // Northern summer
-        90 - absLat + 23.5;  // Southern summer
-    let winterAlt = isNorthernHemisphere ? 
-        90 - absLat - 23.5 : // Northern winter
-        90 - absLat - 23.5;  // Southern winter
-    let equinoxAlt = 90 - absLat;
-
-    // Path colors - NOW FIXED regardless of hemisphere
+    // Path colors and labels
     const pathColors = {
         winter: '#0066cc',  // Blue
         equinox: '#009933', // Green
         summer: '#cc3300'   // Red
     };
-    
     const seasonLabels = ['Winter', 'Spring/Fall', 'Summer'];
 
-    // Function to generate points for a smooth curve
-    function generateCurvePoints(maxAltitude) {
+    function generateCartesianPoints(maxAltitude) {
         const points = [];
         for (let hour = 0; hour <= 24; hour += 0.25) {
             const timePosition = hour / 24;
             const angleRadians = (timePosition - 0.5) * 2 * Math.PI;
             const altitude = maxAltitude * Math.cos(angleRadians);
             
-            // Only add points if the sun is above horizon
-            if (altitude > 0) {
-                points.push({
-                    x: width * timePosition,
-                    y: height - (height * altitude / 90),
-                    hour
-                });
-            }
+            // Include all points, not just above horizon
+            points.push({
+                x: width * timePosition,
+                y: height - (height * Math.max(-5, altitude) / 90), // Limit how far below horizon we show
+                hour,
+                altitude
+            });
         }
         return points;
     }
 
-    // Generate paths - order is important for consistent colors
-    const paths = [
-        { type: 'winter', points: generateCurvePoints(winterAlt) },
-        { type: 'equinox', points: generateCurvePoints(equinoxAlt) },
-        { type: 'summer', points: generateCurvePoints(summerAlt) }
-    ];
+    function generateSunCalcPoints(date) {
+        const points = [];
+        for (let hour = 0; hour <= 24; hour += 0.25) {
+            const currentDate = new Date(date);
+            currentDate.setHours(hour, (hour % 1) * 60, 0);
+            const sunPos = SunCalc.getPosition(currentDate, lat, lng);
+            const altitude = sunPos.altitude * 180 / Math.PI;
+            
+            // Include all points, not just above horizon
+            points.push({
+                x: width * (hour / 24),
+                y: height - (height * Math.max(-5, altitude) / 90), // Limit how far below horizon we show
+                hour,
+                altitude
+            });
+        }
+        return points;
+    }
+
+    let paths;
+    if (isNearPoles) {
+        const year = new Date().getFullYear();
+        const dates = isNorthernHemisphere ? [
+            new Date(year, 11, 21),
+            new Date(year, 2, 20),
+            new Date(year, 5, 21)
+        ] : [
+            new Date(year, 5, 21),
+            new Date(year, 2, 20),
+            new Date(year, 11, 21)
+        ];
+
+        paths = [
+            { type: 'winter', points: generateSunCalcPoints(dates[0]) },
+            { type: 'equinox', points: generateSunCalcPoints(dates[1]) },
+            { type: 'summer', points: generateSunCalcPoints(dates[2]) }
+        ];
+    } else {
+        const summerSolsticeDeclination = 23.5;
+        const winterSolsticeDeclination = -23.5;
+        
+        let summerAlt, winterAlt;
+        if (isNorthernHemisphere) {
+            summerAlt = 90 - absLat + summerSolsticeDeclination;
+            winterAlt = 90 - absLat + winterSolsticeDeclination;
+        } else {
+            summerAlt = 90 - absLat - winterSolsticeDeclination;
+            winterAlt = 90 - absLat - summerSolsticeDeclination;
+        }
+        const equinoxAlt = 90 - absLat;
+
+        paths = [
+            { type: 'winter', points: generateCartesianPoints(winterAlt) },
+            { type: 'equinox', points: generateCartesianPoints(equinoxAlt) },
+            { type: 'summer', points: generateCartesianPoints(summerAlt) }
+        ];
+    }
 
     // Draw paths
     paths.forEach(path => {
-        // Only draw if there are points (sun appears above horizon)
-        if (path.points.length > 0) {
-            ctx.strokeStyle = pathColors[path.type];
-            ctx.lineWidth = 2;
+        ctx.strokeStyle = pathColors[path.type];
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        path.points.forEach((pos, i) => {
+            if (i === 0) ctx.moveTo(pos.x, pos.y);
+            else ctx.lineTo(pos.x, pos.y);
+        });
+        ctx.stroke();
+
+        // Add time markers and labels for every hour
+        path.points.filter(pos => Math.abs(pos.hour % 1) < 0.01).forEach(pos => {
+            // Draw dot
+            ctx.fillStyle = pathColors[path.type];
             ctx.beginPath();
-            
-            path.points.forEach((pos, i) => {
-                if (i === 0) ctx.moveTo(pos.x, pos.y);
-                else ctx.lineTo(pos.x, pos.y);
-            });
-            ctx.stroke();
+            ctx.arc(pos.x, pos.y, 3, 0, 2 * Math.PI);
+            ctx.fill();
 
-            // Add time markers and labels for all paths
-            path.points.filter(pos => Math.abs(pos.hour % 1) < 0.01 && pos.hour <= 23).forEach(pos => {
-                // Draw marker dot
-                ctx.fillStyle = pathColors[path.type];
-                ctx.beginPath();
-                ctx.arc(pos.x, pos.y, 3, 0, 2 * Math.PI);
-                ctx.fill();
-
-                // Add time label
-                ctx.fillStyle = 'black';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'center';
-                const timeLabel = `${String(Math.floor(pos.hour)).padStart(2, '0')}:00`;
-                ctx.fillText(timeLabel, pos.x, pos.y - 10);
-            });
-        }
+            // Add time label
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            const timeLabel = `${String(Math.floor(pos.hour)).padStart(2, '0')}:00`;
+            // Adjust label position based on path location
+            const labelY = pos.y - 10;
+            ctx.fillText(timeLabel, pos.x, labelY);
+        });
     });
 
     // Draw horizon line
@@ -1024,9 +1061,9 @@ function createSunPathDiagram(lat) {
     ctx.fillStyle = 'black';
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('E', width * 0.25, height - 5);
-    ctx.fillText(isNorthernHemisphere ? 'N' : 'S', width * 0.5, height - 5);
-    ctx.fillText('W', width * 0.75, height - 5);
+    ctx.fillText('E', width * 0.25, height - 50);
+    ctx.fillText(isNorthernHemisphere ? 'N' : 'S', width * 0.5, height - 50);
+    ctx.fillText('W', width * 0.75, height - 50);
 
     // Add labels
     ctx.font = 'bold 16px Arial';
@@ -1034,7 +1071,7 @@ function createSunPathDiagram(lat) {
     ctx.fillText('Zenith', 10, 25);
     ctx.fillText('Horizon', 10, height - 5);
 
-    // Add legend - NOW FIXED order regardless of hemisphere
+    // Add legend
     ctx.font = 'bold 14px Arial';
     seasonLabels.forEach((season, i) => {
         ctx.fillStyle = Object.values(pathColors)[i];
