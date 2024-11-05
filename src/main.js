@@ -1302,7 +1302,7 @@ function updateControls(skipUpdates = false) {
                     isUpdating = false;
                 });
         }
-    }, 300);
+    }, 3000);
 }
 
 
